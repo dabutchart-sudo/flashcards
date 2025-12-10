@@ -1,17 +1,25 @@
 // ===================================================================
-// app.js — DEBUG EDITION (Finds the "Blank Screen" error)
+// app.js — NO-IMPORT EDITION (Guaranteed to Run)
 // ===================================================================
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW, APP_VERSION } from "./constants.js";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// --- 1. PASTE YOUR KEYS HERE (Inside the quotes) ---
+const SUPABASE_URL      = "PASTE_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+const UNSPLASH_ACCESS_KEY = "PASTE_YOUR_UNSPLASH_KEY_HERE";
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// --- Configuration ---
+const CONFIG_MAX_NEW = "dutch_max_new_v1";
+const APP_VERSION = "2.1";
+
+// --- Initialize Global Libraries ---
+// We use window.supabase because we loaded it via <script> tag in index.html
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const { createApp } = Vue;
 
 const app = createApp({
     data() {
         return {
-            appVersion: APP_VERSION || "1.0",
+            appVersion: APP_VERSION,
             currentScreen: 'menu',
             
             // State
@@ -58,7 +66,6 @@ const app = createApp({
         // --- Progress Stats ---
         stats() {
             try {
-                // Safety check: If data isn't loaded yet, return zeros (prevents crash)
                 if (!this.allCards) return { doneNew:0, doneReview:0, dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
 
                 const now = new Date();
@@ -174,9 +181,9 @@ const app = createApp({
             try {
                 this.loading = { show: true, msg: 'Checking Keys...' };
                 
-                // 1. Check constants
-                if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-                    throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in constants.js");
+                // 1. Check keys
+                if (SUPABASE_URL.includes("PASTE_YOUR")) {
+                    throw new Error("Please open app.js and paste your Supabase Keys at the top!");
                 }
 
                 this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
@@ -195,7 +202,7 @@ const app = createApp({
                 
                 this.reviewHistory = hist || [];
 
-                // 4. Load Google Charts (Optional)
+                // 4. Load Google Charts
                 if (window.google && google.charts) {
                     try {
                         google.charts.load("current", { packages: ["corechart"] });
@@ -630,7 +637,7 @@ const app = createApp({
     }
 });
 
-// GLOBAL ERROR HANDLER (The Safety Net)
+// GLOBAL ERROR HANDLER
 app.config.errorHandler = (err, instance, info) => {
     console.error("Vue Crash:", err);
     alert("System Error: " + err.message + "\nInfo: " + info);
