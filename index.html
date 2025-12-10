@@ -11,8 +11,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="icon" href="/flashcards/favicon.ico"> 
 
     <style>
         :root {
@@ -114,8 +113,8 @@
                 
                 <div class="menu-grid">
                     <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v4.1)</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v4.1)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v4.2)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v4.2)</span></button>
                     <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
                 <div class="center-msg">Version {{ appVersion }}</div>
@@ -191,12 +190,16 @@
     </div>
 </div>
 
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 // --- YOUR KEYS ---
 const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
 const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
-const APP_VERSION = "4.1";
+const APP_VERSION = "4.2";
 
 // --- CORE INITIALIZATION ---
 const { createApp } = window.Vue || { createApp: () => { console.error("Vue not loaded"); return { mount: () => {} }; } };
@@ -297,16 +300,15 @@ const app = createApp({
             if (window.localStorage) {
                 localStorage.setItem("dutch_max_new_v1", this.settingsMaxNew);
             }
-            
-            // Saving review data (omitted for brevity, but functional in the full implementation)
-            // ...
-            
             this.loading.show = false;
         },
         startSession() {
-            // (Functionality omitted for brevity, but works on full app)
+            // Placeholder: Initialize session logic
             this.sessionTotal = this.allCards.length;
-            this.currentCard = this.allCards[0]; // Simple mock for testing
+            if (this.allCards.length > 0) {
+                this.sessionQueue = [this.allCards[0]]; // Mock card for initial view
+            }
+            this.currentIndex = 0;
             this.resetCard();
         },
         resetCard() {
@@ -316,8 +318,7 @@ const app = createApp({
         },
         flipCard() { this.isFlipped = !this.isFlipped; },
         async rate(rating) {
-            // (Functionality omitted for brevity, but works on full app)
-            alert(`Rated: ${rating}. Card will advance.`);
+            // Placeholder: Rating logic
             this.resetCard();
         }
     }
