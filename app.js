@@ -153,24 +153,44 @@ createApp({
         // -------------------------
         // INIT & LOADING
         // -------------------------
+// -------------------------
+        // INIT & LOADING
+        // -------------------------
         async init() {
-            this.loading = { show: true, msg: 'Loading...' };
-            
-            this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
-            
-            // Load Data
-            let { data: cards } = await supabase.from("cards").select("*").range(0, 9999);
-            this.allCards = cards || [];
-            
-            let { data: hist } = await supabase.from("reviewhistory").select("*");
-            this.reviewHistory = hist || [];
+            try {
+                this.loading = { show: true, msg: 'Connecting...' };
+                
+                // 1. Check if Constants loaded (Debugging step)
+                if (!SUPABASE_URL) throw new Error("Missing API Keys (constants.js)");
 
-            // Load Google Charts
-            if (window.google && google.charts) {
-                google.charts.load("current", { packages: ["corechart"] });
+                this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
+                
+                // 2. Load Cards
+                this.loading.msg = 'Loading Cards...';
+                let { data: cards, error: cardError } = await supabase.from("cards").select("*").range(0, 9999);
+                if (cardError) throw cardError;
+                this.allCards = cards || [];
+                
+                // 3. Load History
+                this.loading.msg = 'Loading History...';
+                let { data: hist, error: histError } = await supabase.from("reviewhistory").select("*");
+                if (histError) throw histError;
+                this.reviewHistory = hist || [];
+
+                // 4. Load Google Charts
+                if (window.google && google.charts) {
+                    google.charts.load("current", { packages: ["corechart"] });
+                }
+
+                // Success!
+                this.loading.show = false;
+
+            } catch (err) {
+                // If an error occurs, SHOW IT on the screen
+                console.error(err);
+                this.loading.msg = "Error: " + (err.message || err);
+                // We keep loading.show = true so the user sees the error message overlay
             }
-
-            this.loading.show = false;
         },
 
         // -------------------------
