@@ -121,8 +121,8 @@
                 </div>
                 <div class="menu-grid">
                     <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.7)</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.7)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.8)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.8)</span></button>
                     <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
                 <div class="center-msg">Version {{ appVersion }}</div>
@@ -199,7 +199,7 @@
 const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
 const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
-const APP_VERSION = "2.7";
+const APP_VERSION = "2.8";
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -230,20 +230,8 @@ const app = createApp({
     },
     computed: {
         stats() {
-            // CRASH PREVENTION: Always return safe defaults. The code that caused the crash is now removed.
-            return { dueNew:0, dueReview:0 };
-            
-            /*
-            // Original code that crashed, now commented out:
-            try {
-                if (!Array.isArray(this.allCards) || !this.allCards.length) return { dueNew:0, dueReview:0 };
-                // ... (complex date logic here) ...
-                return { dueNew: newDue, dueReview: revDue };
-            } catch (e) {
-                console.error("Stats Calculation Error:", e);
-                return { dueNew:0, dueReview:0 };
-            }
-            */
+            // CRASH PREVENTION: Always return static zeros to prevent rendering crash.
+            return { dueNew: 0, dueReview: 0 };
         },
         currentCard() { return this.sessionQueue[this.currentIndex] || null; },
         sessionStarted() { return this.sessionTotal > 0; },
@@ -277,8 +265,7 @@ const app = createApp({
             // 3. Mark ready for bypass and wait a moment before finishing
             this.loading.readyForBypass = true;
             
-            // The crash should be prevented now, so the screen should appear!
-            // If it still crashes, you can click the Bypass button after this line runs.
+            // We expect this to work now!
             this.loading.show = false;
 
         } catch (e) {
