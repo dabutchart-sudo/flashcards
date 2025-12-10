@@ -6,135 +6,178 @@
     <title>Dutch Flashcards</title>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#FF9F1C">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon" href="/flashcards/favicon.ico"> 
+    
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            var box = document.getElementById('error-box');
+            if(box) {
+                box.style.display = 'block';
+                box.innerHTML += "Error: " + msg + "<br>Line: " + line + "<br><br>";
+            }
+            // Also alert for good measure
+            alert("System Error: " + msg);
+        };
+    </script>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
     <style>
-        :root { --primary: #FF9F1C; --bg-app: #F4F6F8; --bg-card: #FFFFFF; --text-main: #1A1A1A; --radius-lg: 24px; --safe-area-bottom: env(safe-area-inset-bottom, 20px); }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-app); display: flex; flex-direction: column; overflow: hidden; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: #F4F6F8; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+        }
+
+        /* --- SIMPLIFIED LAYOUT (No Sliding) --- */
+        .app-header {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .screen {
+            /* Force visibility for debugging */
+            display: none; 
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
         
-        #app-container { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-app); transform: translateX(100%); transition: transform 0.3s; z-index: 10; }
-        .screen.active { transform: translateX(0); z-index: 20; }
-        .content-scroll { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
+        .screen.active {
+            display: block; /* Only show active screen */
+        }
+
+        /* Error Box Style */
+        #error-box {
+            display: none;
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            margin: 20px;
+            border: 2px solid #c62828;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        /* Menu Buttons */
+        .menu-btn {
+            display: block;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            cursor: pointer;
+        }
         
-        /* Header */
-        .app-header { height: 80px; display: flex; align-items: center; justify-content: center; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 50; flex-shrink: 0; }
-        .header-title { font-weight: 800; font-size: 1.5rem; color: var(--text-main); }
-        
-        /* Menu */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .menu-btn { background: white; border: none; border-radius: var(--radius-lg); padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); font-size: 1.2rem; font-weight: 700; cursor: pointer; }
-        
-        /* Card */
-        .flashcard-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; perspective: 1000px; }
-        .flashcard { width: 100%; max-width: 500px; aspect-ratio: 4/3; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
-        .flashcard.flipped { transform: rotateY(180deg); }
-        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 24px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        .face.back { transform: rotateY(180deg); }
-        .word-text { font-size: 2.5rem; font-weight: 800; text-align: center; }
-        
-        /* Controls */
-        .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: rgba(255,255,255,0.95); display: flex; gap: 10px; z-index: 100; border-top: 1px solid #eee; padding-bottom: calc(20px + var(--safe-area-bottom)); }
-        .rating-btn { flex: 1; padding: 15px 0; border-radius: 12px; border: none; font-weight: 700; color: white; font-size: 1rem; cursor: pointer; }
+        /* Card Styles */
+        .flashcard {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .word-main { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; }
+        .word-sub { font-size: 1.5rem; color: #666; }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <div id="app-container">
+    <div class="app-header">🇳🇱 Dutch Cards (v5.1)</div>
+
+    <div id="error-box"></div>
+
+    <div id="app">
         
         <div class="screen" :class="{ active: currentScreen === 'menu' }">
-            <div class="app-header"><div class="header-title">🇳🇱 Dutch Cards</div></div>
-            <div class="content-scroll">
-                <div style="background: white; padding: 20px; border-radius: 24px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                    <div style="font-size: 3rem; font-weight: 800; color: #FF9F1C;">{{ allCards.length }}</div>
-                    <div style="color: #888; font-weight: 600;">Mock Cards Loaded</div>
-                </div>
-                <div class="menu-grid">
-                    <button class="menu-btn" @click="startSession">🎓 Start Learn</button>
-                    <button class="menu-btn" @click="currentScreen = 'settings'">⚙️ Settings</button>
-                </div>
-                <div style="text-align: center; margin-top: 30px; color: #ccc;">v5.0 (Offline Mode)</div>
-            </div>
+            <p style="text-align: center; color: #666;">Offline Mode: Mock Data</p>
+            
+            <button class="menu-btn" @click="startSession">🎓 Start Review ({{ allCards.length }} Cards)</button>
+            <button class="menu-btn" @click="currentScreen = 'settings'">⚙️ Settings</button>
         </div>
 
         <div class="screen" :class="{ active: currentScreen === 'learn' }">
-            <div class="app-header" style="justify-content: space-between; padding: 0 20px;">
-                <div style="width: 40px;"></div>
-                <div class="header-title">Review</div>
-                <button @click="currentScreen = 'menu'" style="background:none; border:none; font-size: 1.5rem;">🏠</button>
-            </div>
+            <button @click="currentScreen = 'menu'" style="margin-bottom: 20px; padding: 10px;">⬅ Back to Menu</button>
             
-            <div class="flashcard-stage" v-if="currentCard">
-                <div class="flashcard" :class="{ flipped: isFlipped }" @click="isFlipped = !isFlipped">
-                    <div class="face front">
-                        <div class="word-text">{{ currentCard.dutch }}</div>
-                        <div style="margin-top: 10px; color: #FF9F1C; font-weight: 700;">DUTCH</div>
-                    </div>
-                    <div class="face back">
-                        <div class="word-text">{{ currentCard.english }}</div>
-                        <div style="margin-top: 10px; color: #2EC4B6; font-weight: 700;">ENGLISH</div>
-                    </div>
+            <div v-if="currentCard" class="flashcard" @click="isFlipped = !isFlipped">
+                <div v-if="!isFlipped">
+                    <div class="word-main">{{ currentCard.dutch }}</div>
+                    <div style="color:orange; font-weight:bold;">DUTCH</div>
+                </div>
+                <div v-else>
+                    <div class="word-main">{{ currentCard.english }}</div>
+                    <div style="color:blue; font-weight:bold;">ENGLISH</div>
                 </div>
             </div>
 
-            <div class="review-controls" v-if="isFlipped">
-                <button class="rating-btn" style="background:#FF595E" @click="nextCard">Again</button>
-                <button class="rating-btn" style="background:#FFCA3A" @click="nextCard">Hard</button>
-                <button class="rating-btn" style="background:#8AC926" @click="nextCard">Good</button>
-                <button class="rating-btn" style="background:#1982C4" @click="nextCard">Easy</button>
+            <div v-if="isFlipped" style="display:flex; gap:10px; margin-top:20px;">
+                <button class="menu-btn" style="background:#ffcdd2" @click="nextCard">Again</button>
+                <button class="menu-btn" style="background:#c8e6c9" @click="nextCard">Good</button>
             </div>
         </div>
 
+        <div class="screen" :class="{ active: currentScreen === 'settings' }">
+            <h2>Settings</h2>
+            <button class="menu-btn" @click="currentScreen = 'menu'">Back</button>
+        </div>
+
     </div>
-</div>
 
-<script>
-const { createApp } = Vue;
+    <script>
+        const { createApp } = Vue;
 
-createApp({
-    data() {
-        return {
-            currentScreen: 'menu',
-            isFlipped: false,
-            currentIndex: 0,
-            
-            // --- MOCK DATA (No Database) ---
-            allCards: [
-                { id: 1, dutch: "Hallo", english: "Hello" },
-                { id: 2, dutch: "De kat", english: "The cat" },
-                { id: 3, dutch: "Goedemorgen", english: "Good morning" },
-                { id: 4, dutch: "Dank je", english: "Thank you" }
-            ]
-        };
-    },
-    computed: {
-        currentCard() {
-            return this.allCards[this.currentIndex];
-        }
-    },
-    methods: {
-        startSession() {
-            this.currentIndex = 0;
-            this.isFlipped = false;
-            this.currentScreen = 'learn';
-        },
-        nextCard() {
-            this.isFlipped = false;
-            setTimeout(() => {
-                this.currentIndex = (this.currentIndex + 1) % this.allCards.length;
-            }, 200);
-        }
-    }
-}).mount('#app');
-</script>
+        createApp({
+            data() {
+                return {
+                    currentScreen: 'menu',
+                    isFlipped: false,
+                    currentIndex: 0,
+                    allCards: [
+                        { id: 1, dutch: "Hallo", english: "Hello" },
+                        { id: 2, dutch: "De kat", english: "The cat" },
+                        { id: 3, dutch: "Het hond", english: "The dog" }
+                    ]
+                };
+            },
+            computed: {
+                currentCard() {
+                    return this.allCards[this.currentIndex];
+                }
+            },
+            methods: {
+                startSession() {
+                    this.currentIndex = 0;
+                    this.isFlipped = false;
+                    this.currentScreen = 'learn';
+                },
+                nextCard() {
+                    this.isFlipped = false;
+                    setTimeout(() => {
+                        this.currentIndex = (this.currentIndex + 1) % this.allCards.length;
+                    }, 100);
+                }
+            }
+        }).mount('#app');
+    </script>
 
 </body>
 </html>
