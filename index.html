@@ -111,15 +111,15 @@
             <div class="content-scroll">
                 
                 <div style="text-align:center; padding: 20px 0; background: #fff; border-radius: 12px; margin-bottom: 16px;">
-                    <div class="header-title" style="font-size:1.5rem;">Stats Disabled (Testing)</div>
-                    <p style="color:#888; margin: 5px 0 0;">Attempting to load menu structure...</p>
+                    <div class="header-title" style="font-size:1.5rem;">Menu Loaded!</div>
+                    <p style="color:#888; margin: 5px 0 0;">(Static content used for testing)</p>
                 </div>
                 
                 <div class="menu-grid">
-                    <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.9)</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.9)</span></button>
-                    <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
+                    <button class="menu-btn" @click="currentScreen = 'learn'"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v3.0)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v3.0)</span></button>
+                    <button class="menu-btn" @click="currentScreen = 'settings'"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
                 <div class="center-msg">Version {{ appVersion }}</div>
             </div>
@@ -128,7 +128,7 @@
         <div id="screen-learn" class="screen" :class="{ active: currentScreen === 'learn' }">
             <div class="app-header">
                 <div style="width:40px;"></div> <div class="header-title">Review</div>
-                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+                <button class="btn-icon" @click="currentScreen = 'menu'">🏠</button> 
             </div>
             <div class="flashcard-stage">
                 <div v-if="currentCard" id="flashcard-el" class="flashcard" :class="{ flipped: isFlipped, 'no-transition': disableTransition }" @click="flipCard">
@@ -142,7 +142,7 @@
                 </div>
                 <div v-if="!currentCard && sessionStarted" class="center-msg">
                     <h2>🎉 All caught up!</h2>
-                    <button class="menu-btn" style="height:auto; padding:10px 20px;" @click="nav('menu')">Home</button>
+                    <button class="menu-btn" style="height:auto; padding:10px 20px;" @click="currentScreen = 'menu'">Home</button>
                 </div>
             </div>
             <div class="review-controls" :class="{ hidden: !isFlipped }">
@@ -156,27 +156,27 @@
         <div id="screen-wordReview" class="screen">
             <div class="app-header">
                 <div style="width:40px;"></div> <div class="header-title">Dictionary</div>
-                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+                <button class="btn-icon" @click="currentScreen = 'menu'">🏠</button> 
             </div>
             <div class="content-scroll">
-                <div class="center-msg">**Temporarily disabled to fix crash.**</div>
+                <div class="center-msg">**Temporarily disabled.**</div>
             </div>
         </div>
         
         <div id="screen-report" class="screen">
             <div class="app-header">
                 <div style="width:40px;"></div> <div class="header-title">Report</div>
-                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+                <button class="btn-icon" @click="currentScreen = 'menu'">🏠</button> 
             </div>
             <div class="content-scroll">
-                <div class="center-msg">**Temporarily disabled to fix crash.**</div>
+                <div class="center-msg">**Temporarily disabled.**</div>
             </div>
         </div>
         
         <div id="screen-settings" class="screen" :class="{ active: currentScreen === 'settings' }">
             <div class="app-header">
                 <div style="width:40px;"></div> <div class="header-title">Settings</div>
-                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+                <button class="btn-icon" @click="currentScreen = 'menu'">🏠</button> 
             </div>
             <div class="content-scroll">
                 <div class="container-elevated">
@@ -195,7 +195,7 @@
 const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
 const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
-const APP_VERSION = "2.9";
+const APP_VERSION = "3.0";
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -258,11 +258,9 @@ const app = createApp({
             if(err2) throw err2;
             this.reviewHistory = hist || [];
             
-            // 3. Mark ready for bypass and wait a moment before finishing
+            // 3. Mark ready for bypass and show menu
             this.loading.readyForBypass = true;
-            
-            // We expect this to work now!
-            this.loading.show = false;
+            this.loading.show = false; // Show the menu!
 
         } catch (e) {
             alert("Database Error: " + e.message + ". Check your table RLS policies.");
@@ -270,13 +268,16 @@ const app = createApp({
         }
     },
     methods: {
+        // Simplified nav/screen changes now bypass the saveProgress logic
+        // This is purely for diagnostic purposes to see the menu.
         async nav(id) {
-            if(id === 'menu') await this.saveProgress();
-            if (id === 'learn' || id === 'settings' || id === 'menu') {
-                this.currentScreen = id;
-                if(id === 'learn') this.startSession();
-            }
+            // Re-introducing save logic only on exit to make the app functional
+            if(this.currentScreen === 'learn' && id === 'menu') await this.saveProgress();
+            
+            this.currentScreen = id;
+            if(id === 'learn') this.startSession();
         },
+        
         async saveProgress() {
             this.loading = { show:true, msg:"Saving...", readyForBypass: false };
             if(this.reviewBuffer.length > 0) {
