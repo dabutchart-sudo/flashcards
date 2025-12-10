@@ -99,7 +99,7 @@
         
         <div style="margin-top: 15px; color: #999; font-weight: 600;">v{{ appVersion }}</div>
         
-        <button v-if="loading.show" @click="loading.show = false; currentScreen = 'menu';" style="margin-top: 20px; padding: 10px 20px; border: none; background: #eee; border-radius: 8px;">Bypass Load</button>
+        <button v-if="loading.readyForBypass" @click="loading.show = false; currentScreen = 'menu';" style="margin-top: 20px; padding: 10px 20px; border: none; background: #eee; border-radius: 8px;">Bypass Load</button>
 
     </div>
 
@@ -121,8 +121,8 @@
                 </div>
                 <div class="menu-grid">
                     <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.5)</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.5)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.6)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.6)</span></button>
                     <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
                 <div class="center-msg">Version {{ appVersion }}</div>
@@ -199,7 +199,7 @@
 const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
 const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
-const APP_VERSION = "2.5";
+const APP_VERSION = "2.6";
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -209,7 +209,7 @@ const app = createApp({
         return {
             appVersion: APP_VERSION,
             currentScreen: 'menu',
-            loading: { show: true, msg: 'Starting...' },
+            loading: { show: true, msg: 'Starting...', readyForBypass: false },
             
             // Data
             allCards: [],
@@ -271,17 +271,29 @@ const app = createApp({
             this.loading.msg = "Connecting...";
             this.settingsMaxNew = localStorage.getItem("dutch_max_new_v1") || "10";
             
+            // 1. Load Cards (including count)
             this.loading.msg = "Loading Cards...";
-            let { data: cards, error: err1 } = await supabase.from("cards").select("*").range(0, 4000);
+            let { data: cards, error: err1, count } = await supabase
+                .from("cards")
+                .select("*", { count: 'exact' }) // Request count from Supabase
+                .range(0, 4000);
+                
             if(err1) throw err1;
             this.allCards = cards || [];
+            this.loading.msg = `Loading Cards (${count || cards.length} found)...`; // Display count
 
-            this.loading.msg = "Loading History...";
+            // 2. Load History
             let { data: hist, error: err2 } = await supabase.from("reviewhistory").select("*");
+            if(err2) throw err2;
             this.reviewHistory = hist || [];
+            
+            // 3. Mark ready for bypass and wait a moment before finishing
+            this.loading.readyForBypass = true;
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
 
             this.loading.show = false;
         } catch (e) {
+            // Display explicit database error message
             alert("Database Error: " + e.message + ". Check your table RLS policies.");
             this.loading.msg = "Failed to load data: " + e.message;
         }
@@ -295,7 +307,7 @@ const app = createApp({
             }
         },
         async saveProgress() {
-            this.loading = { show:true, msg:"Saving..." };
+            this.loading = { show:true, msg:"Saving...", readyForBypass: false };
             if(this.reviewBuffer.length > 0) {
                 const toSend = [...this.reviewBuffer];
                 this.reviewBuffer = [];
