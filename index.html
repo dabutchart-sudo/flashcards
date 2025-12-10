@@ -117,8 +117,8 @@
                 
                 <div class="menu-grid">
                     <button class="menu-btn" @click="currentScreen = 'learn'"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v3.0)</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v3.0)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v3.1)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v3.1)</span></button>
                     <button class="menu-btn" @click="currentScreen = 'settings'"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
                 <div class="center-msg">Version {{ appVersion }}</div>
@@ -195,7 +195,7 @@
 const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
 const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
-const APP_VERSION = "3.0";
+const APP_VERSION = "3.1";
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -238,6 +238,7 @@ const app = createApp({
         }
     },
     async mounted() {
+        console.log(`[v${this.appVersion}] App mounted. Starting init...`);
         try {
             this.loading.msg = "Connecting...";
             this.settingsMaxNew = localStorage.getItem("dutch_max_new_v1") || "10";
@@ -252,6 +253,7 @@ const app = createApp({
             if(err1) throw err1;
             this.allCards = cards || [];
             this.loading.msg = `Loading History (${count || cards.length} cards found)...`;
+            console.log(`[v${this.appVersion}] Cards Loaded: ${count || cards.length}`);
 
             // 2. Load History
             let { data: hist, error: err2 } = await supabase.from("reviewhistory").select("*");
@@ -260,20 +262,18 @@ const app = createApp({
             
             // 3. Mark ready for bypass and show menu
             this.loading.readyForBypass = true;
+            console.log(`[v${this.appVersion}] History Loaded. Attempting final render.`);
             this.loading.show = false; // Show the menu!
 
         } catch (e) {
+            console.error(`[v${this.appVersion}] CRITICAL INIT ERROR:`, e);
             alert("Database Error: " + e.message + ". Check your table RLS policies.");
             this.loading.msg = "Failed to load data: " + e.message;
         }
     },
     methods: {
-        // Simplified nav/screen changes now bypass the saveProgress logic
-        // This is purely for diagnostic purposes to see the menu.
         async nav(id) {
-            // Re-introducing save logic only on exit to make the app functional
-            if(this.currentScreen === 'learn' && id === 'menu') await this.saveProgress();
-            
+            if(id === 'menu') await this.saveProgress();
             this.currentScreen = id;
             if(id === 'learn') this.startSession();
         },
