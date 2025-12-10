@@ -3,9 +3,9 @@
 // ===================================================================
 
 // --- 1. PASTE YOUR KEYS HERE (Inside the quotes) ---
-const SUPABASE_URL      = "PASTE_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
-const UNSPLASH_ACCESS_KEY = "PASTE_YOUR_UNSPLASH_KEY_HERE";
+const SUPABASE_URL      = "https://dntitlrtvkgisxwqjxch.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
+const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
 
 // --- Configuration ---
 const CONFIG_MAX_NEW = "dutch_max_new_v1";
