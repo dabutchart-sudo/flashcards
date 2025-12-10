@@ -10,6 +10,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -117,8 +119,8 @@
                 </div>
                 <div class="menu-grid">
                     <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.3)</span></button>
-                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.3)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📚</span><span class="menu-text">Dictionary (v2.4)</span></button>
+                    <button class="menu-btn" disabled><span class="menu-icon">📊</span><span class="menu-text">Report (v2.4)</span></button>
                     <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
                 <div class="center-msg">Version {{ appVersion }}</div>
@@ -226,14 +228,17 @@ const app = createApp({
     },
     computed: {
         stats() {
-            // SAFE CALCULATION
-            if (!this.allCards.length) return { dueNew:0, dueReview:0 };
+            // SAFE CALCULATION: Ensure allCards is an array before processing
+            if (!Array.isArray(this.allCards) || !this.allCards.length) return { dueNew:0, dueReview:0 };
+            
             const today = new Date().toISOString().slice(0, 10);
             const maxNew = parseInt(this.settingsMaxNew || 10);
-            // Added check for "c.first_seen" to prevent crashes on null dates
+            
+            // Added stricter checks for properties (c.first_seen, c.due_date)
             const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
             const newDue = Math.max(0, maxNew - newDone);
             const revDue = this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) <= today).length;
+            
             return { dueNew: newDue, dueReview: revDue };
         },
         currentCard() { return this.sessionQueue[this.currentIndex] || null; },
@@ -241,7 +246,7 @@ const app = createApp({
         filteredWords() {
             if(!this.wordSearch) return this.allCards.slice(0, 50);
             const s = this.wordSearch.toLowerCase();
-            return this.allCards.filter(c => c.dutch.toLowerCase().includes(s) || c.english.toLowerCase().includes(s));
+            return this.allCards.filter(c => (c.dutch||'').toLowerCase().includes(s) || (c.english||'').toLowerCase().includes(s));
         }
     },
     async mounted() {
@@ -252,23 +257,26 @@ const app = createApp({
             this.loading.msg = "Loading Cards...";
             let { data: cards, error: err1 } = await supabase.from("cards").select("*").range(0, 4000);
             if(err1) throw err1;
+            // Set allCards to an empty array if data is null, preventing array function crashes
             this.allCards = cards || [];
 
             this.loading.msg = "Loading History...";
             let { data: hist, error: err2 } = await supabase.from("reviewhistory").select("*");
+            // Set reviewHistory to an empty array if data is null
             this.reviewHistory = hist || [];
 
             this.loading.show = false;
         } catch (e) {
-            alert("Database Error: " + e.message + ". Check your console for details.");
+            // Display explicit database error message
+            alert("Database Error: " + e.message + ". Check your table names or RLS policies.");
             this.loading.msg = "Failed to load data: " + e.message;
         }
     },
     methods: {
         async nav(id) {
             if(id === 'menu') await this.saveProgress();
-            // Note: The dictionary and report screens will be non-functional in this version
-            if (id !== 'wordReview' && id !== 'report') {
+            // Only allow navigation to functional screens
+            if (id === 'learn' || id === 'settings' || id === 'menu') {
                 this.currentScreen = id;
                 if(id === 'learn') this.startSession();
             }
