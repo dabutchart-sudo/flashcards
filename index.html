@@ -14,60 +14,34 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        /* --- ORIGINAL STYLING RESTORED --- */
+        /* --- STYLING (v5.3 Base + New Features) --- */
         :root {
-            --primary: #FF9F1C; 
-            --primary-dark: #e08000;
-            --secondary: #2EC4B6; 
-            --bg-app: #F4F6F8;
-            --bg-card: #FFFFFF;
-            --text-main: #1A1A1A;
-            --text-sub: #788591;
-            --color-again: #FF595E;
-            --color-hard: #FFCA3A;
-            --color-good: #8AC926;
-            --color-easy: #1982C4;
-            --header-height: 100px;
+            --primary: #FF9F1C; --primary-dark: #e08000; --secondary: #2EC4B6;
+            --bg-app: #F4F6F8; --bg-card: #FFFFFF; --text-main: #1A1A1A; --text-sub: #788591;
+            --color-again: #FF595E; --color-hard: #FFCA3A; --color-good: #8AC926; --color-easy: #1982C4;
+            --radius-lg: 24px; --radius-md: 16px;
             --safe-area-top: env(safe-area-inset-top, 0px);
             --safe-area-bottom: env(safe-area-inset-bottom, 20px);
-            --radius-lg: 24px; 
-            --radius-md: 16px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html { font-size: 16px; height: 100dvh; width: 100%; overflow: hidden; }
         body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-app); color: var(--text-main); height: 100%; width: 100%; display: flex; flex-direction: column; overscroll-behavior-y: none; }
 
-        /* THE FIX: Screens are hidden by display:none, not off-screen sliding */
-        .screen {
-            display: none; 
-            width: 100%; height: 100%; 
-            flex-direction: column; 
-            background: var(--bg-app);
-        }
+        /* Screen Visibility (The Fix) */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; background: var(--bg-app); }
         .screen.active { display: flex; }
 
-        /* Layout & Scrolling */
+        /* Layout */
         #app-container { display: flex; flex-direction: column; position: relative; overflow: hidden; width: 100%; height: 100%; }
         .content-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; padding-bottom: calc(40px + var(--safe-area-bottom)); display: flex; flex-direction: column; }
 
         /* Header */
-        .app-header { height: calc(var(--header-height) + var(--safe-area-top)); padding-top: var(--safe-area-top); background: var(--bg-card); display: flex; align-items: center; justify-content: space-between; padding-left: 16px; padding-right: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 50; flex-shrink: 0; }
+        .app-header { height: calc(100px + var(--safe-area-top)); padding-top: var(--safe-area-top); background: var(--bg-card); display: flex; align-items: center; justify-content: space-between; padding-left: 16px; padding-right: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 50; flex-shrink: 0; }
         .header-title { font-weight: 700; font-size: 3rem; color: var(--text-main); text-align: center; position: absolute; left: 50%; transform: translateX(-50%); width: 100%; pointer-events: none; }
         .btn-icon { background: none; border: none; font-size: 3rem; cursor: pointer; padding: 8px; z-index: 2; }
 
-        /* Progress Bar */
-        .progress-track { width: 100%; max-width: 850px; height: 48px; background: #e0e0e0; border-radius: 24px; margin-bottom: 16px; overflow: hidden; position: relative; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
-        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; border-radius: 12px; }
-        .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: var(--text-main); z-index: 5; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
-
-        /* Menu Grid */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
-        .menu-btn { background: var(--bg-card); border: none; border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); cursor: pointer; aspect-ratio: 1/1; width: 100%; }
-        .menu-icon { font-size: 10rem; line-height: 1; }
-        .menu-text { font-weight: 700; font-size: 2.5rem; color: var(--text-main); }
-
-        /* Stats Widget */
+        /* Components */
         .container-elevated { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; padding: 24px; }
         .progress-widget { background: #F8F9FA; border-radius: var(--radius-md); padding: 20px; margin-top: 10px; }
         .pw-grid { display: grid; grid-template-columns: auto 70px 20px 70px; align-items: center; row-gap: 12px; justify-content: center; }
@@ -76,8 +50,18 @@
         .pw-val { font-size: 1.8rem; font-weight: 800; color: var(--primary); text-align: center; }
         .pw-div-vert { width: 4px; height: 30px; background: #E9ECEF; margin: 0 auto; }
 
-        /* Flashcard */
+        /* Menu */
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+        .menu-btn { background: var(--bg-card); border: none; border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); cursor: pointer; aspect-ratio: 1/1; width: 100%; }
+        .menu-icon { font-size: 10rem; line-height: 1; }
+        .menu-text { font-weight: 700; font-size: 2.5rem; color: var(--text-main); }
+
+        /* Flashcard Stage */
         .flashcard-stage { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; perspective: 1000px; padding-bottom: 120px; }
+        .progress-track { width: 100%; max-width: 850px; height: 48px; background: #e0e0e0; border-radius: 24px; margin-bottom: 16px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+        .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: var(--text-main); }
+
         .flashcard { width: 100%; max-width: 850px; aspect-ratio: 4/3; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
         .flashcard.flipped { transform: rotateY(180deg); }
         .flashcard.no-transition { transition: none !important; }
@@ -86,22 +70,36 @@
         .face-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .lang-flag { font-size: 4rem; }
         .card-status { font-size: 1.5rem; font-weight: 700; padding: 6px 12px; background: #eee; border-radius: 100px; color: #666; }
-        .face-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+        .face-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; overflow:hidden; }
         .word-text { font-size: 4rem; font-weight: 700; text-align: center; }
         .hint-image { max-width: 100%; max-height: 250px; border-radius: 12px; object-fit: contain; background: #f8f8f8; }
 
-        /* Controls */
+        /* Interaction Buttons */
+        .tts-btn { position: absolute; bottom: 20px; left: 20px; background: none; border: none; font-size: 3rem; cursor: pointer; z-index: 10; }
+        .hint-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 3rem; cursor: pointer; z-index: 10; }
+        .edit-img-btn { position: absolute; bottom: 20px; right: 20px; background: #eee; border: none; border-radius: 12px; padding: 10px 20px; font-weight: 600; font-size: 1.2rem; cursor: pointer; z-index: 10; }
+
+        /* Rating Controls */
         .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; padding-bottom: calc(30px + var(--safe-area-bottom)); background: rgba(255,255,255,0.95); border-top: 1px solid #eee; display: flex; gap: 12px; z-index: 100; }
         .rating-btn { flex: 1; border: none; padding: 40px 0; border-radius: 16px; font-weight: 700; color: white; font-size: 2rem; cursor: pointer; }
-        .hidden { display: none !important; }
-        .center-msg { text-align: center; color: var(--text-sub); margin-top: 40px; font-size: 1.5rem; }
-
-        /* Dictionary & Settings */
-        .search-input { width: 100%; padding: 20px; border: 1px solid #ddd; border-radius: 16px; font-size: 1.5rem; margin-bottom: 10px; }
+        
+        /* Dictionary */
+        .search-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        .search-input { flex:1; padding: 20px; border: 1px solid #ddd; border-radius: 16px; font-size: 1.5rem; }
+        .filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
+        .filter-pill { background: #eee; border: none; padding: 8px 16px; border-radius: 20px; font-size: 1.2rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .filter-pill.active { background: var(--text-main); color: white; }
         .ri-text { font-size: 1.4rem; font-weight: 700; }
         .ri-sub { font-size: 1rem; color: #777; }
-        
-        /* Loading */
+
+        /* Image Search Grid */
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 10px; }
+        .image-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 4px solid transparent; cursor: pointer; }
+        .image-item.selected { border-color: var(--primary); }
+        .image-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        .hidden { display: none !important; }
+        .center-msg { text-align: center; color: var(--text-sub); margin-top: 40px; font-size: 1.5rem; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #F4F6F8; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -111,11 +109,12 @@
     <div id="loading-overlay" v-if="loading.show">
         <div style="font-size: 4rem; font-weight: 800; margin-bottom: 20px;">🇳🇱 Dutch Cards</div>
         <div style="font-size: 1.5rem; color: #666;">{{ loading.msg }}</div>
+        <div style="margin-top: 15px; color: #999;">v{{ appVersion }}</div>
     </div>
 
     <div id="app-container">
         
-        <div id="screen-menu" class="screen" :class="{ active: currentScreen === 'menu' }">
+        <div id="screen-menu" class="screen" :class="{ active: !loading.show && currentScreen === 'menu' }">
             <div class="app-header">
                 <div class="header-title">🇳🇱 Dutch Cards</div>
             </div>
@@ -143,7 +142,7 @@
             </div>
         </div>
 
-        <div id="screen-learn" class="screen" :class="{ active: currentScreen === 'learn' }">
+        <div id="screen-learn" class="screen" :class="{ active: !loading.show && currentScreen === 'learn' }">
             <div class="app-header">
                 <div style="width:50px;"></div> <div class="header-title">Review</div>
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
@@ -162,18 +161,24 @@
                             <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                         </div>
                         <div class="face-content">
-                            <img v-if="currentCard.image_url" :src="currentCard.image_url" class="hint-image" />
+                            <img v-if="currentCard.image_url" :src="currentCard.image_url" class="hint-image" :class="{ hidden: !showHint }" />
                             <div class="word-text">{{ currentCard.dutch }}</div>
                         </div>
+                        
+                        <button class="tts-btn" @click.stop="speakTTS">🔊</button>
+                        <button v-if="currentCard.image_url" class="hint-btn" @click.stop="showHint = !showHint">💡</button>
+                        <button class="edit-img-btn" @click.stop="openImageSelector('learn')">🖼 Edit</button>
                     </div>
+
                     <div class="face back">
                         <div class="face-header">
                             <span class="lang-flag">🇬🇧</span>
                             <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                         </div>
                         <div class="face-content">
-                            <div class="word-text">{{ currentCard.english }}</div>
+                            <div class="word-text" style="font-size:3rem;">{{ currentCard.english }}</div>
                         </div>
+                        <button class="edit-img-btn" @click.stop="openImageSelector('learn')">🖼 Edit</button>
                     </div>
                 </div>
                 
@@ -192,6 +197,32 @@
             </div>
         </div>
 
+        <div id="screen-selectImage" class="screen" :class="{ active: currentScreen === 'selectImage' }">
+            <div class="app-header">
+                <button class="btn-icon" @click="exitImageSelector">⬅️</button>
+                <div class="header-title">Select Image</div>
+                <div style="width:50px;"></div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <div class="search-row">
+                        <input v-model="imgSearchQuery" class="search-input" placeholder="Search Unsplash...">
+                        <button class="menu-btn" style="width:auto; padding:10px 20px; margin:0;" @click="searchImages">Go</button>
+                    </div>
+                    <div v-if="imgLoading" class="center-msg">Searching...</div>
+                    <div class="image-grid">
+                        <div v-for="img in imgResults" :key="img.id" class="image-item" 
+                             :class="{ selected: selectedImageUrl === img.urls.regular }"
+                             @click="selectedImageUrl = img.urls.regular">
+                            <img :src="img.urls.thumb" />
+                        </div>
+                    </div>
+                    <button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white;" 
+                            :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
+                </div>
+            </div>
+        </div>
+
         <div id="screen-wordReview" class="screen" :class="{ active: currentScreen === 'wordReview' }">
             <div class="app-header">
                 <div style="width:50px;"></div> <div class="header-title">Dictionary</div>
@@ -199,13 +230,36 @@
             </div>
             <div class="content-scroll">
                 <input type="text" v-model="wordSearch" class="search-input" placeholder="Search...">
+                
+                <div class="filter-row">
+                    <button class="filter-pill" :class="{active: wordFilter==='all'}" @click="wordFilter='all'">All</button>
+                    <button class="filter-pill" :class="{active: wordFilter==='due'}" @click="wordFilter='due'">Due</button>
+                    <button class="filter-pill" :class="{active: wordFilter==='new'}" @click="wordFilter='new'">New</button>
+                    <button class="filter-pill" :class="{active: wordFilter==='suspended'}" @click="wordFilter='suspended'">Frozen</button>
+                </div>
+
+                <div style="text-align:right; margin-bottom:10px;">
+                    <select v-model="sortCol" style="font-size:1.2rem; padding:5px;">
+                        <option value="dutch">A-Z (Dutch)</option>
+                        <option value="english">A-Z (English)</option>
+                        <option value="last_reviewed">Recent</option>
+                    </select>
+                </div>
+
                 <div class="container-elevated">
-                    <div v-for="c in filteredWords" :key="c.id" style="padding:15px; border-bottom:1px solid #eee;">
-                        <div class="ri-text">{{ c.dutch }}</div>
-                        <div class="ri-sub">{{ c.english }}</div>
-                        <div class="ri-sub" style="font-size:0.8rem; margin-top:5px;">
-                            <span v-if="c.suspended" style="color:red; background:#ffebee; padding:2px 6px; border-radius:4px;">FROZEN</span>
-                            <span v-else style="color:green; background:#e8f5e9; padding:2px 6px; border-radius:4px;">{{ c.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                    <div style="color:#999; margin-bottom:10px;">{{ filteredWords.length }} Words</div>
+                    <div v-for="c in filteredWords" :key="c.id" style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div class="ri-text">{{ c.dutch }}</div>
+                            <div class="ri-sub">{{ c.english }}</div>
+                            <div class="ri-sub" style="font-size:0.8rem; margin-top:5px;">
+                                <span v-if="c.suspended" style="color:red; background:#ffebee; padding:2px 6px; border-radius:4px;">FROZEN</span>
+                                <span v-else style="color:green; background:#e8f5e9; padding:2px 6px; border-radius:4px;">{{ c.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button style="font-size:1.5rem; border:none; background:none;" @click="openImageSelector('wordReview', c)">🖼</button>
+                            <button style="font-size:1.5rem; border:none; background:none;" @click="toggleSuspend(c)">{{ c.suspended ? '❄️' : '🚫' }}</button>
                         </div>
                     </div>
                 </div>
@@ -219,7 +273,11 @@
             </div>
             <div class="content-scroll">
                 <div class="container-elevated">
-                    <div class="header-title" style="font-size:2rem; text-align:left; margin-bottom:10px;">Mastery</div>
+                    <div class="header-title" style="font-size:2rem; text-align:left; margin-bottom:10px;">Mastery History</div>
+                    <div id="mastery-history-chart" style="width:100%; height:300px;"></div>
+                </div>
+                <div class="container-elevated">
+                    <div class="header-title" style="font-size:2rem; text-align:left; margin-bottom:10px;">Current Status</div>
                     <div id="status-chart-div" style="width:100%; height:300px;"></div>
                 </div>
                 <div class="container-elevated">
@@ -255,7 +313,8 @@
 // --- YOUR KEYS ---
 const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
-const APP_VERSION = "5.3";
+const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
+const APP_VERSION = "5.4";
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -271,25 +330,36 @@ const app = createApp({
             reviewHistory: [],
             reviewBuffer: [],
             
+            // Session
             sessionQueue: [],
             sessionTotal: 0,
             currentIndex: 0,
             isFlipped: false,
             disableTransition: false,
             sessionStarted: false,
+            showHint: false, // For Lightbulb
             
+            // Image Search
+            imgSearchQuery: '',
+            imgResults: [],
+            imgLoading: false,
+            selectedImageUrl: null,
+            imageReturnScreen: 'learn',
+            cardForImage: null,
+
+            // Dictionary
             wordSearch: '',
+            wordFilter: 'all',
+            sortCol: 'dutch',
             settingsMaxNew: '10'
         };
     },
     computed: {
         stats() {
             if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
-            
             const today = new Date().toISOString().slice(0, 10);
             const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
             const maxNew = parseInt(this.settingsMaxNew || 10);
-            
             const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
             
             return {
@@ -306,9 +376,22 @@ const app = createApp({
             return `${Math.min(completed + 1, this.sessionTotal)} / ${this.sessionTotal}`; 
         },
         filteredWords() {
-            if(!this.wordSearch) return this.allCards.slice(0, 50);
-            const s = this.wordSearch.toLowerCase();
-            return this.allCards.filter(c => (c.dutch||'').toLowerCase().includes(s) || (c.english||'').toLowerCase().includes(s));
+            const today = new Date().toISOString().slice(0, 10);
+            let list = this.allCards.filter(c => {
+                const match = (c.dutch||'').toLowerCase().includes(this.wordSearch.toLowerCase()) || (c.english||'').toLowerCase().includes(this.wordSearch.toLowerCase());
+                if(!match) return false;
+                if(this.wordFilter === 'suspended') return c.suspended;
+                if(c.suspended) return false;
+                if(this.wordFilter === 'new') return c.type === 'new';
+                if(this.wordFilter === 'due') return (c.type !== 'new' && c.due_date && c.due_date.slice(0,10) <= today);
+                return true;
+            });
+            // Sort
+            list.sort((a,b) => {
+                const va = a[this.sortCol] || ""; const vb = b[this.sortCol] || "";
+                return va > vb ? 1 : -1;
+            });
+            return list.slice(0, 100); // Limit render for speed
         }
     },
     async mounted() {
@@ -339,7 +422,7 @@ const app = createApp({
             if(id === 'menu') await this.saveProgress();
             this.currentScreen = id;
             if(id === 'learn') this.startSession();
-            if(id === 'report') setTimeout(this.drawCharts, 200);
+            if(id === 'report') setTimeout(this.drawCharts, 300);
         },
         async saveProgress() {
             this.loading = { show:true, msg:"Saving..." };
@@ -354,7 +437,7 @@ const app = createApp({
                     if(c) await supabase.from("cards").update({ 
                         type: c.type, interval: c.interval, ease: c.ease, 
                         last_reviewed: c.last_reviewed, due_date: c.due_date, 
-                        first_seen: c.first_seen, reps: c.reps, lapses: c.lapses 
+                        first_seen: c.first_seen, reps: c.reps, lapses: c.lapses, image_url: c.image_url, suspended: c.suspended 
                     }).eq("id", c.id);
                 }
             }
@@ -378,6 +461,7 @@ const app = createApp({
         resetCard() {
             this.disableTransition = true;
             this.isFlipped = false;
+            this.showHint = false;
             this.$nextTick(() => setTimeout(() => this.disableTransition=false, 50));
         },
         flipCard() { this.isFlipped = !this.isFlipped; },
@@ -389,7 +473,6 @@ const app = createApp({
             c.reps = (c.reps||0)+1;
             
             if(c.type === "new") { c.type="review"; c.interval=1; c.ease=2.5; c.first_seen=now.slice(0,10); }
-            
             if(rating==="again") { c.lapses=(c.lapses||0)+1; c.interval=1; c.ease=Math.max(1.3, c.ease-0.2); }
             else if(rating==="hard") { c.interval=Math.max(1, Math.round(c.interval*1.2)); c.ease=Math.max(1.3, c.ease-0.1); }
             else if(rating==="good") { c.interval=Math.round(c.interval*c.ease); }
@@ -400,23 +483,63 @@ const app = createApp({
             
             this.reviewBuffer.push({ cardid:c.id, rating, timestamp:now, reps:c.reps, lapses:c.lapses, interval:c.interval, ease:c.ease, review_type:type });
             this.sessionQueue.splice(this.currentIndex, 1);
-            
             if(this.reviewBuffer.length >= 5) this.saveProgress();
             this.resetCard();
         },
+        // --- NEW FEATURES ---
+        speakTTS() {
+            if(!this.currentCard) return;
+            const u = new SpeechSynthesisUtterance(this.currentCard.dutch);
+            u.lang = "nl-NL";
+            window.speechSynthesis.speak(u);
+        },
+        async toggleSuspend(card) {
+            card.suspended = !card.suspended;
+            await supabase.from("cards").update({ suspended: card.suspended }).eq("id", card.id);
+        },
+        openImageSelector(fromScreen, cardOverride=null) {
+            this.imageReturnScreen = fromScreen;
+            this.cardForImage = cardOverride || this.currentCard;
+            this.imgSearchQuery = this.cardForImage.english;
+            this.imgResults = [];
+            this.selectedImageUrl = null;
+            this.currentScreen = 'selectImage';
+            this.searchImages();
+        },
+        exitImageSelector() { this.currentScreen = this.imageReturnScreen; },
+        async searchImages() {
+            if(!this.imgSearchQuery) return;
+            this.imgLoading = true;
+            try {
+                const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(this.imgSearchQuery)}&per_page=12&client_id=${UNSPLASH_ACCESS_KEY}`);
+                const json = await res.json();
+                this.imgResults = json.results || [];
+            } catch(e) { console.error(e); }
+            this.imgLoading = false;
+        },
+        async saveSelectedImage() {
+            if(!this.selectedImageUrl || !this.cardForImage) return;
+            this.cardForImage.image_url = this.selectedImageUrl;
+            // Immediate save
+            await supabase.from("cards").update({ image_url: this.selectedImageUrl }).eq("id", this.cardForImage.id);
+            this.exitImageSelector();
+        },
         drawCharts() {
-            // Simple Chart Logic
+            // 1. Mastery Status
             const stats = { new:0, learning:0, reviewing:0, mastered:0 };
             this.allCards.forEach(c => {
+                if(c.suspended) return;
                 if(c.type==='new') stats.new++;
                 else if(c.interval <= 3) stats.learning++;
                 else if(c.interval <= 21) stats.reviewing++;
                 else stats.mastered++;
             });
-            const d1 = google.visualization.arrayToDataTable([['S','C'],['New',stats.new],['Lrn',stats.learning],['Rev',stats.reviewing],['Mst',stats.mastered]]);
-            new google.visualization.PieChart(document.getElementById('status-chart-div')).draw(d1, {colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], legend:'bottom'});
+            new google.visualization.PieChart(document.getElementById('status-chart-div')).draw(
+                google.visualization.arrayToDataTable([['S','C'],['New',stats.new],['Lrn',stats.learning],['Rev',stats.reviewing],['Mst',stats.mastered]]),
+                {colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], legend:'bottom'}
+            );
             
-            // Activity Chart (Day view)
+            // 2. Activity (Day)
             const today = new Date(); const m = today.getMonth();
             const map = new Map();
             for(let d=new Date(2024, m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) map.set(d.toISOString().slice(0,10), {new:0, rev:0, d:new Date(d)});
@@ -428,6 +551,35 @@ const app = createApp({
             d2.addColumn('date','Date'); d2.addColumn('number','New'); d2.addColumn('number','Rev');
             for(const v of map.values()) d2.addRow([v.d, v.new, v.rev]);
             new google.visualization.ColumnChart(document.getElementById('chart-div')).draw(d2, {isStacked:true, colors:['#FF9F1C','#1a80d9'], legend:'bottom', bar:{groupWidth:'90%'}});
+
+            // 3. Mastery History (Restored!)
+            const cardMap = new Map();
+            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:c.type, ivl:c.interval||0}); });
+            const history = [...this.reviewHistory].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+            const dailyStats = [];
+            let curDate = history[0]?.timestamp.slice(0,10) || today.toISOString().slice(0,10);
+            const todayStr = today.toISOString().slice(0,10);
+            let idx = 0;
+            
+            while(curDate <= todayStr) {
+                while(idx < history.length && history[idx].timestamp.slice(0,10) <= curDate) idx++;
+                // Snapshot
+                let s = {n:0, l:0, r:0, m:0};
+                for(const st of cardMap.values()) {
+                    if(st.status==='new') s.n++;
+                    else if(st.ivl<=3) s.l++;
+                    else if(st.ivl<=21) s.r++;
+                    else s.m++;
+                }
+                const [y, mm, dd] = curDate.split('-').map(Number);
+                dailyStats.push([new Date(y, mm-1, dd), s.n, s.l, s.r, s.m]);
+                const nextD = new Date(y, mm-1, dd); nextD.setDate(nextD.getDate()+1);
+                curDate = nextD.toISOString().slice(0,10);
+            }
+            const d3 = new google.visualization.DataTable();
+            d3.addColumn('date','Date'); d3.addColumn('number','New'); d3.addColumn('number','Lrn'); d3.addColumn('number','Rev'); d3.addColumn('number','Mst');
+            d3.addRows(dailyStats);
+            new google.visualization.AreaChart(document.getElementById('mastery-history-chart')).draw(d3, {isStacked:true, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], legend:'bottom', areaOpacity:0.9});
         }
     }
 });
