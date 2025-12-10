@@ -11,137 +11,140 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <link rel="stylesheet" href="style.css">
-
     <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
 
+    <style>
+        :root {
+            --primary: #FF9F1C; 
+            --primary-dark: #e08000;
+            --secondary: #2EC4B6; 
+            --bg-app: #F4F6F8;
+            --bg-card: #FFFFFF;
+            --text-main: #1A1A1A;
+            --text-sub: #788591;
+            --color-again: #FF595E;
+            --color-hard: #FFCA3A;
+            --color-good: #8AC926;
+            --color-easy: #1982C4;
+            --header-height: 100px;
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 20px);
+            --radius-lg: 24px; 
+            --radius-md: 16px;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { font-size: 16px; height: 100dvh; width: 100%; overflow: hidden; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-app); color: var(--text-main); height: 100%; width: 100%; display: flex; flex-direction: column; overscroll-behavior-y: none; }
+        
+        /* Loading Overlay */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(244, 246, 248, 0.98); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .loading-title { font-size: 3rem; font-weight: 800; color: var(--text-main); margin-bottom: 20px; text-align: center; }
+        .spinner { width: 60px; height: 60px; border: 6px solid #e0e0e0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Layout */
+        #app-container { display: flex; flex-direction: column; position: relative; overflow: hidden; width: 100%; height: 100%; background: var(--bg-app); }
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-app); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1); z-index: 10; }
+        .screen.active { transform: translateX(0); z-index: 20; }
+        .content-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; padding-bottom: calc(40px + var(--safe-area-bottom)); display: flex; flex-direction: column; min-height: 0; -webkit-overflow-scrolling: touch; }
+        
+        /* Header */
+        .app-header { height: calc(var(--header-height) + var(--safe-area-top)); padding-top: var(--safe-area-top); background: var(--bg-card); display: flex; align-items: center; justify-content: space-between; padding-left: 16px; padding-right: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 50; flex-shrink: 0; position: relative; }
+        .header-title { font-weight: 700; font-size: 3rem; color: var(--text-main); text-align: center; }
+        .app-header .header-title { position: absolute; left: 50%; transform: translateX(-50%); width: 100%; margin: 0; pointer-events: none; }
+        .btn-icon { background: none; border: none; font-size: 3rem; cursor: pointer; padding: 8px; }
+
+        /* Components */
+        .container-elevated { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); flex-shrink: 0; margin-bottom: 16px; padding: 24px; }
+        .progress-widget { background: #F8F9FA; border-radius: var(--radius-md); padding: 20px; margin-top: 10px; }
+        .pw-grid { display: grid; grid-template-columns: auto 70px 20px 70px; align-items: center; row-gap: 12px; justify-content: center; }
+        .pw-head { font-size: 1.5rem; font-weight: 700; color: #ADB5BD; text-align: center; }
+        .pw-val { font-size: 1.8rem; font-weight: 800; color: var(--primary); text-align: center; }
+        
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+        .menu-btn { background: var(--bg-card); border: none; border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.04); cursor: pointer; aspect-ratio: 1/1; width: 100%; }
+        .menu-icon { font-size: 4rem; }
+        .menu-text { font-weight: 700; font-size: 1.5rem; color: var(--text-main); }
+
+        /* Flashcard */
+        .flashcard-stage { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; perspective: 1000px; padding: 20px; padding-bottom: 120px; }
+        .flashcard { width: 100%; max-width: 600px; aspect-ratio: 4/3; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
+        .flashcard.flipped { transform: rotateY(180deg); }
+        .flashcard.no-transition { transition: none !important; }
+        .face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 24px; background: var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: flex; flex-direction: column; padding: 20px; border: 1px solid rgba(0,0,0,0.02); }
+        .face.back { transform: rotateY(180deg); }
+        .word-text { font-size: 3rem; font-weight: 700; text-align: center; margin-top: auto; margin-bottom: auto; }
+        .hint-image { max-width: 100%; max-height: 200px; border-radius: 12px; object-fit: contain; margin: 0 auto; }
+        
+        /* Controls */
+        .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; padding-bottom: calc(30px + var(--safe-area-bottom)); background: rgba(255,255,255,0.95); border-top: 1px solid #eee; display: flex; gap: 12px; z-index: 100; }
+        .rating-btn { flex: 1; border: none; padding: 20px 0; border-radius: 16px; font-weight: 700; color: white; font-size: 1.2rem; cursor: pointer; }
+        .btn-again { background: var(--color-again); }
+        .btn-hard { background: var(--color-hard); }
+        .btn-good { background: var(--color-good); }
+        .btn-easy { background: var(--color-easy); }
+        .hidden { display: none !important; }
+        .center-msg { text-align: center; color: var(--text-sub); margin-top: 20px; }
+    </style>
+</head>
 <body>
 
 <div id="app">
-    
-    <div id="loading-overlay" v-if="loading.show" style="display:flex;">
-        <div class="loading-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
+    <div id="loading-overlay" v-if="loading.show">
+        <div class="loading-title">🇳🇱 Dutch Cards</div>
         <div class="spinner"></div>
-        <div id="loading-msg" class="loading-text">{{ loading.msg }}</div>
+        <div class="loading-text">{{ loading.msg }}</div>
+        <div v-if="false" style="margin-top:20px; color:red;">Javascript Failed to Start</div>
     </div>
 
     <div id="app-container">
-        
         <div id="screen-menu" class="screen" :class="{ active: currentScreen === 'menu' }">
             <div class="app-header">
-                <div class="header-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
+                <div class="header-title">Dutch Cards</div>
             </div>
-            
             <div class="content-scroll">
-                <div class="container-elevated content-block"> 
-                    <div class="header-title" style="margin-bottom:8px; font-size:2.5rem; text-align: center; width: 100%; position:relative; transform:none; left:0;">Today's Progress</div>
-                    
+                <div class="container-elevated">
+                    <div class="header-title" style="font-size:1.5rem; margin-bottom:10px;">Today's Progress</div>
                     <div class="progress-widget">
                         <div class="pw-grid">
-                            <div></div> 
-                            <div class="pw-head">NEW</div>
-                            <div class="pw-div-vert"></div>
-                            <div class="pw-head">REVIEW</div>
-
-                            <div class="pw-label">Due Today</div>
-                            <div class="pw-val">{{ stats.dueNew }}</div>
-                            <div class="pw-div-vert"></div>
-                            <div class="pw-val">{{ stats.dueReview }}</div>
-
-                            <div class="pw-label">Due Tomorrow</div>
-                            <div class="pw-val">{{ stats.tomorrowNew }}</div>
-                            <div class="pw-div-vert"></div>
-                            <div class="pw-val">{{ stats.tomorrowReview }}</div>
+                            <div></div> <div class="pw-head">NEW</div> <div></div> <div class="pw-head">REV</div>
+                            <div class="pw-head" style="text-align:right; font-size:1rem;">Due</div>
+                            <div class="pw-val">{{ stats.dueNew }}</div> <div></div> <div class="pw-val">{{ stats.dueReview }}</div>
                         </div>
                     </div>
-                    <div class="center-msg" style="margin-top:16px;">
-                        Done Today: {{ stats.doneNew }} New • {{ stats.doneReview }} Reviews
-                    </div>
                 </div>
-
                 <div class="menu-grid">
-                    <button class="menu-btn" @click="nav('learn')">
-                        <span class="menu-icon">🎓</span>
-                        <span class="menu-text">Learn</span>
-                    </button>
-                    <button class="menu-btn" @click="nav('wordReview')">
-                        <span class="menu-icon">📚</span>
-                        <span class="menu-text">Dictionary</span>
-                    </button>
-                    <button class="menu-btn" @click="nav('report')">
-                        <span class="menu-icon">📊</span>
-                        <span class="menu-text">Report</span>
-                    </button>
-                    <button class="menu-btn" @click="nav('settings')">
-                        <span class="menu-icon">⚙️</span>
-                        <span class="menu-text">Settings</span>
-                    </button>
+                    <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
+                    <button class="menu-btn" @click="nav('wordReview')"><span class="menu-icon">📚</span><span class="menu-text">Dictionary</span></button>
+                    <button class="menu-btn" @click="nav('report')"><span class="menu-icon">📊</span><span class="menu-text">Report</span></button>
+                    <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                 </div>
-
-                <div class="center-msg" style="margin-top: 30px; font-size: 2rem; opacity: 1; color: black;">
-                    Version {{ appVersion }}
-                </div>
+                <div class="center-msg">Version {{ appVersion }}</div>
             </div>
         </div>
 
         <div id="screen-learn" class="screen" :class="{ active: currentScreen === 'learn' }">
             <div class="app-header">
-                <div style="width:50px;"></div> 
-                <div class="header-title">Review</div>
+                <div style="width:40px;"></div> <div class="header-title">Review</div>
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
             </div>
-
             <div class="flashcard-stage">
-                
-                <div class="progress-track">
-                    <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
-                    <div class="progress-text">{{ progressText }}</div>
-                </div>
-
-                <div v-if="currentCard" 
-                     id="flashcard-el" 
-                     class="flashcard" 
-                     :class="{ flipped: isFlipped, 'no-transition': disableTransition }" 
-                     @click="flipCard">
-                    
+                <div v-if="currentCard" id="flashcard-el" class="flashcard" :class="{ flipped: isFlipped, 'no-transition': disableTransition }" @click="flipCard">
                     <div class="face front">
-                        <div class="face-header">
-                            <span class="lang-flag">🇳🇱</span>
-                            <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
-                        </div>
-                        
-                        <div class="face-content">
-                            <img v-if="currentCard.image_url && showHint" :src="currentCard.image_url" class="hint-image" />
-                            <div class="word-text">{{ currentCard.dutch }}</div>
-                        </div>
-
-                        <button class="tts-btn" @click.stop="speakTTS">🔊</button>
-                        <button v-if="currentCard.image_url" class="btn-reveal" @click.stop="toggleHint">💡</button>
-                        <button class="btn-edit-img" @click.stop="openImageSelector('learn')">🖼 Edit Image</button>
+                        <div class="word-text">{{ currentCard.dutch }}</div>
+                        <img v-if="currentCard.image_url" :src="currentCard.image_url" class="hint-image" />
                     </div>
-
                     <div class="face back">
-                        <div class="face-header">
-                            <span class="lang-flag">🇬🇧</span>
-                            <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
-                        </div>
-                        <div class="face-content">
-                            <div class="word-text" style="font-size:4rem;">{{ currentCard.english }}</div>
-                        </div>
-                        <button class="btn-edit-img" @click.stop="openImageSelector('learn')">🖼 Edit Image</button>
+                        <div class="word-text">{{ currentCard.english }}</div>
                     </div>
                 </div>
-                
                 <div v-if="!currentCard && sessionStarted" class="center-msg">
                     <h2>🎉 All caught up!</h2>
-                    <p>No more cards due right now.</p>
-                    <button class="chip-btn" style="margin-top:20px; font-size:1rem; padding:12px 24px;" @click="nav('menu')">Return Home</button>
+                    <button class="menu-btn" style="height:auto; padding:10px 20px;" @click="nav('menu')">Home</button>
                 </div>
             </div>
-
             <div class="review-controls" :class="{ hidden: !isFlipped }">
                 <button class="rating-btn btn-again" @click="rate('again')">Again</button>
                 <button class="rating-btn btn-hard" @click="rate('hard')">Hard</button>
@@ -152,155 +155,178 @@
 
         <div id="screen-wordReview" class="screen" :class="{ active: currentScreen === 'wordReview' }">
             <div class="app-header">
-                <div style="width:50px;"></div> 
-                <div class="header-title">Dictionary</div>
-                <button class="btn-icon" @click="nav('menu')">🏠</button> 
-            </div>
-
-            <div class="wr-subheader">
-                <div class="wr-search-container">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" v-model="wordSearch" class="wr-search-input" placeholder="Search Dutch or English...">
-                    <button v-if="wordSearch" class="hidden" @click="wordSearch = ''" :class="{ hidden: !wordSearch }">✕</button>
-                </div>
-                
-                <div class="wr-filters">
-                    <button class="filter-pill" :class="{ active: wordFilter === 'all' }" @click="wordFilter = 'all'">All</button>
-                    <button class="filter-pill" :class="{ active: wordFilter === 'due' }" @click="wordFilter = 'due'">Due</button>
-                    <button class="filter-pill" :class="{ active: wordFilter === 'new' }" @click="wordFilter = 'new'">New</button>
-                    <button class="filter-pill" :class="{ active: wordFilter === 'suspended' }" @click="wordFilter = 'suspended'">Frozen</button>
-                </div>
-            </div>
-
-            <div class="content-scroll" style="padding-top: 0;">
-                <div class="wr-tools">
-                    <span style="color:var(--text-sub); font-size:0.9rem;">{{ filteredWords.length }} Words</span>
-                    <select v-model="sortCol" class="minimal-select">
-                        <option value="dutch">A-Z (Dutch)</option>
-                        <option value="english">A-Z (English)</option>
-                        <option value="last_reviewed">Recent</option>
-                        <option value="due_date">Due Date</option>
-                    </select>
-                </div>
-
-                <div class="review-table-container">
-                    <div v-if="filteredWords.length === 0" class="center-msg">No words found.</div>
-                    
-                    <div v-for="c in filteredWords" :key="c.id" class="review-item">
-                        <div class="ri-text">
-                            <div class="ri-dutch">{{ c.dutch }}</div>
-                            <div class="ri-eng">{{ c.english }}</div>
-                            <div class="ri-meta">
-                                <span v-if="c.suspended" class="ri-badge bg-susp">Frozen</span>
-                                <span v-else-if="c.type === 'new'" class="ri-badge bg-new">New</span>
-                                <span v-else-if="isDue(c.due_date)" class="ri-badge bg-due">Due</span>
-                                <span v-else class="ri-badge bg-ok">{{ formatDateShort(c.due_date) }}</span>
-                                <span style="color:#ccc">•</span>
-                                <span>Ease: {{ Math.round((c.ease || 2.5)*100) }}%</span>
-                            </div>
-                        </div>
-                        <div class="ri-actions">
-                            <button class="icon-btn" :class="{ 'img-active': c.image_url }" @click="openImageSelector('wordReview', c)">
-                                🖼
-                            </button>
-                            <button class="icon-btn" :style="c.suspended ? 'background:#ffebee; color:red;' : ''" @click="toggleSuspend(c)">
-                                {{ c.suspended ? '❄️' : '🚫' }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="screen-selectImage" class="screen" :class="{ active: currentScreen === 'selectImage' }">
-            <div class="app-header">
-                <button class="btn-icon" @click="exitImageSelector">⬅️</button> 
-                <div class="header-title">Select Image</div>
-                <div style="width:40px;"></div>
-            </div>
-            <div class="content-scroll">
-                <div class="container-elevated content-block">
-                    <div class="search-row">
-                        <input v-model="imgSearchQuery" class="search-input" placeholder="Search Unsplash...">
-                        <button class="search-btn" @click="searchImages">Search</button>
-                    </div>
-                    <div v-if="imgLoading" class="center-msg" style="margin:10px 0; font-size: 1.5rem;">Searching...</div>
-                    <div class="image-grid">
-                        <div v-for="img in imgResults" :key="img.id" 
-                             class="image-item" 
-                             :class="{ selected: selectedImageUrl === img.urls.regular }"
-                             @click="selectedImageUrl = img.urls.regular">
-                            <img :src="img.urls.thumb" />
-                        </div>
-                    </div>
-                    <div v-if="!imgLoading && imgResults.length === 0" class="center-msg">No results.</div>
-                </div>
-                
-                <div class="container-elevated content-block">
-                    <button class="save-img-btn" :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="screen-report" class="screen" :class="{ active: currentScreen === 'report' }">
-            <div class="app-header">
-                <div style="width:50px;"></div> 
-                <div class="header-title">Report</div>
+                <div style="width:40px;"></div> <div class="header-title">Dictionary</div>
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
             </div>
             <div class="content-scroll">
-                
-                <div class="container-elevated content-block">
-                    <div class="header-title" style="margin-bottom:12px; font-size:2.5rem; position:relative; left:0; transform:none; text-align:left;">Mastery History</div>
-                    <div id="mastery-history-chart" style="width:100%; height:300px;"></div>
-                </div>
-
-                <div class="container-elevated content-block">
-                    <div class="header-title" style="margin-bottom:12px; font-size:2.5rem; position:relative; left:0; transform:none; text-align:left;">Current Mastery</div>
-                    <div id="status-chart-div" style="width:100%; height:300px;"></div>
-                </div>
-
-                <div class="container-elevated content-block">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                        <div class="header-title" style="font-size:2.5rem; position:relative; left:0; transform:none; text-align:left;">Activity</div>
-                        <select v-model="reportGroup" class="custom-select" style="flex:0 0 140px; margin: 0; padding: 8px; font-size: 1.2rem;">
-                            <option value="day">Day</option>
-                            <option value="week">Week</option>
-                            <option value="month">Month</option>
-                            <option value="year">Year</option>
-                        </select>
+                <input type="text" v-model="wordSearch" placeholder="Search..." style="width:100%; padding:15px; font-size:1.2rem; border-radius:12px; border:1px solid #ddd; margin-bottom:10px;">
+                <div class="container-elevated">
+                    <div v-for="c in filteredWords" :key="c.id" style="padding:10px; border-bottom:1px solid #eee;">
+                        <div style="font-weight:bold; font-size:1.2rem;">{{ c.dutch }}</div>
+                        <div style="color:#666;">{{ c.english }}</div>
                     </div>
-                    <div id="chart-div" style="width:100%; height:300px;"></div>
-                    <div class="center-msg" style="font-size:0.8rem; margin-top:10px;">Total Reviews: {{ reviewHistory.length }}</div>
                 </div>
             </div>
         </div>
-
+        
         <div id="screen-settings" class="screen" :class="{ active: currentScreen === 'settings' }">
             <div class="app-header">
-                <div style="width:50px;"></div> 
-                <div class="header-title">Settings</div>
+                <div style="width:40px;"></div> <div class="header-title">Settings</div>
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
             </div>
             <div class="content-scroll">
-                <div class="container-elevated content-block container-centered">
-                    <div class="header-title">Daily New Cards</div>
-                    <p style="color:var(--text-sub); font-size:0.9rem;">Maximum new words to introduce per day.</p>
-                    <select v-model="settingsMaxNew" class="custom-select" style="width:100%;">
-                        <option value="5">5 cards</option>
-                        <option value="10">10 cards</option>
-                        <option value="15">15 cards</option>
-                        <option value="20">20 cards</option>
-                        <option value="30">30 cards</option>
+                <div class="container-elevated">
+                    <h3>Daily New Cards</h3>
+                    <select v-model="settingsMaxNew" style="width:100%; font-size:1.5rem; padding:10px;">
+                        <option value="5">5</option><option value="10">10</option><option value="20">20</option>
                     </select>
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 
-<script src="./app.js?v=2"></script>
+<script>
+// --- YOUR KEYS ---
+const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
+const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
+const APP_VERSION = "2.2";
 
+const { createApp } = Vue;
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const app = createApp({
+    data() {
+        return {
+            appVersion: APP_VERSION,
+            currentScreen: 'menu',
+            loading: { show: true, msg: 'Starting...' },
+            
+            // Data
+            allCards: [],
+            reviewHistory: [],
+            reviewBuffer: [],
+            
+            // Session
+            sessionQueue: [],
+            sessionTotal: 0,
+            currentIndex: 0,
+            isFlipped: false,
+            disableTransition: false,
+            
+            // Dictionary
+            wordSearch: '',
+            settingsMaxNew: '10'
+        };
+    },
+    computed: {
+        stats() {
+            if (!this.allCards.length) return { dueNew:0, dueReview:0 };
+            const today = new Date().toISOString().slice(0, 10);
+            const maxNew = parseInt(this.settingsMaxNew || 10);
+            const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
+            const newDue = Math.max(0, maxNew - newDone);
+            const revDue = this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) <= today).length;
+            return { dueNew: newDue, dueReview: revDue };
+        },
+        currentCard() { return this.sessionQueue[this.currentIndex] || null; },
+        sessionStarted() { return this.sessionTotal > 0; },
+        filteredWords() {
+            if(!this.wordSearch) return this.allCards.slice(0, 50);
+            const s = this.wordSearch.toLowerCase();
+            return this.allCards.filter(c => c.dutch.toLowerCase().includes(s) || c.english.toLowerCase().includes(s));
+        }
+    },
+    async mounted() {
+        try {
+            this.loading.msg = "Connecting...";
+            this.settingsMaxNew = localStorage.getItem("dutch_max_new_v1") || "10";
+            
+            let { data: cards, error: err1 } = await supabase.from("cards").select("*").range(0, 4000);
+            if(err1) throw err1;
+            this.allCards = cards || [];
+
+            let { data: hist, error: err2 } = await supabase.from("reviewhistory").select("*");
+            this.reviewHistory = hist || [];
+
+            this.loading.show = false;
+        } catch (e) {
+            alert("Error: " + e.message);
+            this.loading.msg = "Failed: " + e.message;
+        }
+    },
+    methods: {
+        async nav(id) {
+            if(id === 'menu') await this.saveProgress();
+            this.currentScreen = id;
+            if(id === 'learn') this.startSession();
+        },
+        async saveProgress() {
+            this.loading = { show:true, msg:"Saving..." };
+            if(this.reviewBuffer.length > 0) {
+                const toSend = [...this.reviewBuffer];
+                this.reviewBuffer = [];
+                this.reviewHistory.push(...toSend);
+                await supabase.from("reviewhistory").insert(toSend);
+                
+                for(const r of toSend) {
+                    const c = this.allCards.find(x => x.id === r.cardid);
+                    if(c) await supabase.from("cards").update({ 
+                        type: c.type, interval: c.interval, ease: c.ease, 
+                        last_reviewed: c.last_reviewed, due_date: c.due_date, 
+                        first_seen: c.first_seen, reps: c.reps, lapses: c.lapses 
+                    }).eq("id", c.id);
+                }
+            }
+            localStorage.setItem("dutch_max_new_v1", this.settingsMaxNew);
+            this.loading.show = false;
+        },
+        startSession() {
+            const today = new Date().toISOString().slice(0, 10);
+            const max = parseInt(this.settingsMaxNew);
+            const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
+            const due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
+            let n = this.allCards.filter(c => !c.suspended && c.type==="new");
+            n.sort(() => Math.random() - 0.5);
+            const limit = Math.max(0, max - done);
+            this.sessionQueue = [...due, ...n.slice(0, limit)];
+            this.sessionTotal = this.sessionQueue.length;
+            this.currentIndex = 0;
+            this.resetCard();
+        },
+        resetCard() {
+            this.disableTransition = true;
+            this.isFlipped = false;
+            this.$nextTick(() => setTimeout(() => this.disableTransition=false, 50));
+        },
+        flipCard() { this.isFlipped = !this.isFlipped; },
+        async rate(rating) {
+            if(!this.currentCard) return;
+            const c = this.currentCard;
+            const now = new Date().toISOString();
+            const type = c.type;
+            c.reps = (c.reps||0)+1;
+            
+            if(c.type === "new") { c.type="review"; c.interval=1; c.ease=2.5; c.first_seen=now.slice(0,10); }
+            
+            if(rating==="again") { c.lapses=(c.lapses||0)+1; c.interval=1; c.ease=Math.max(1.3, c.ease-0.2); }
+            else if(rating==="hard") { c.interval=Math.max(1, Math.round(c.interval*1.2)); c.ease=Math.max(1.3, c.ease-0.1); }
+            else if(rating==="good") { c.interval=Math.round(c.interval*c.ease); }
+            else if(rating==="easy") { c.interval=Math.round(c.interval*(c.ease+0.15)); c.ease+=0.1; }
+            
+            const due = new Date(); due.setDate(due.getDate()+c.interval);
+            c.due_date = due.toISOString(); c.last_reviewed = now.slice(0,10);
+            
+            this.reviewBuffer.push({ cardid:c.id, rating, timestamp:now, reps:c.reps, lapses:c.lapses, interval:c.interval, ease:c.ease, review_type:type });
+            this.sessionQueue.splice(this.currentIndex, 1);
+            
+            if(this.reviewBuffer.length >= 5) this.saveProgress(); // mini save
+            this.resetCard();
+        }
+    }
+});
+app.mount('#app');
+</script>
 </body>
 </html>
