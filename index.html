@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Dutch Flashcards</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FF9F1C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+
+<body>
+
+<div id="app" v-cloak>
+    
+    <div id="loading-overlay" v-if="loading.show">
+        <div class="loading-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
+        <div class="spinner"></div>
+        <div id="loading-msg" class="loading-text">{{ loading.msg }}</div>
+    </div>
+
+    <div id="app-container">
+        
+        <div id="screen-menu" class="screen" :class="{ active: currentScreen === 'menu' }">
+            <div class="app-header">
+                <div class="header-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
+            </div>
+            
+            <div class="content-scroll">
+                <div class="container-elevated content-block"> 
+                    <div class="header-title" style="margin-bottom:8px; font-size:2.5rem; text-align: center; width: 100%; position:relative; transform:none; left:0;">Today's Progress</div>
+                    
+                    <div class="progress-widget">
+                        <div class="pw-grid">
+                            <div></div> 
+                            <div class="pw-head">NEW</div>
+                            <div class="pw-div-vert"></div>
+                            <div class="pw-head">REVIEW</div>
+
+                            <div class="pw-label">Due Today</div>
+                            <div class="pw-val">{{ stats.dueNew }}</div>
+                            <div class="pw-div-vert"></div>
+                            <div class="pw-val">{{ stats.dueReview }}</div>
+
+                            <div class="pw-label">Due Tomorrow</div>
+                            <div class="pw-val">{{ stats.tomorrowNew }}</div>
+                            <div class="pw-div-vert"></div>
+                            <div class="pw-val">{{ stats.tomorrowReview }}</div>
+                        </div>
+                    </div>
+                    <div class="center-msg" style="margin-top:16px;">
+                        Done Today: {{ stats.doneNew }} New • {{ stats.doneReview }} Reviews
+                    </div>
+                </div>
+
+                <div class="menu-grid">
+                    <button class="menu-btn" @click="nav('learn')">
+                        <span class="menu-icon">🎓</span>
+                        <span class="menu-text">Learn</span>
+                    </button>
+                    <button class="menu-btn" @click="nav('wordReview')">
+                        <span class="menu-icon">📚</span>
+                        <span class="menu-text">Dictionary</span>
+                    </button>
+                    <button class="menu-btn" @click="nav('report')">
+                        <span class="menu-icon">📊</span>
+                        <span class="menu-text">Report</span>
+                    </button>
+                    <button class="menu-btn" @click="nav('settings')">
+                        <span class="menu-icon">⚙️</span>
+                        <span class="menu-text">Settings</span>
+                    </button>
+                </div>
+
+                <div class="center-msg" style="margin-top: 30px; font-size: 2rem; opacity: 1; color: black;">
+                    Version {{ appVersion }}
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-learn" class="screen" :class="{ active: currentScreen === 'learn' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> 
+                <div class="header-title">Review</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+
+            <div class="flashcard-stage">
+                
+                <div class="progress-track">
+                    <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+                    <div class="progress-text">{{ progressText }}</div>
+                </div>
+
+                <div v-if="currentCard" 
+                     id="flashcard-el" 
+                     class="flashcard" 
+                     :class="{ flipped: isFlipped, 'no-transition': disableTransition }" 
+                     @click="flipCard">
+                    
+                    <div class="face front">
+                        <div class="face-header">
+                            <span class="lang-flag">🇳🇱</span>
+                            <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                        </div>
+                        
+                        <div class="face-content">
+                            <img v-if="currentCard.image_url && showHint" :src="currentCard.image_url" class="hint-image" />
+                            <div class="word-text">{{ currentCard.dutch }}</div>
+                        </div>
+
+                        <button class="tts-btn" @click.stop="speakTTS">🔊</button>
+                        
+                        <button v-if="currentCard.image_url" class="btn-reveal" @click.stop="toggleHint">💡</button>
+                        
+                        <button class="btn-edit-img" @click.stop="openImageSelector('learn')">🖼 Edit Image</button>
+                    </div>
+
+                    <div class="face back">
+                        <div class="face-header">
+                            <span class="lang-flag">🇬🇧</span>
+                            <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                        </div>
+                        <div class="face-content">
+                            <div class="word-text" style="font-size:4rem;">{{ currentCard.english }}</div>
+                        </div>
+                        
+                        <button class="btn-edit-img" @click.stop="openImageSelector('learn')">🖼 Edit Image</button>
+                    </div>
+                </div>
+                
+                <div v-if="!currentCard && sessionStarted" class="center-msg">
+                    <h2>🎉 All caught up!</h2>
+                    <p>No more cards due right now.</p>
+                    <button class="chip-btn" style="margin-top:20px; font-size:1rem; padding:12px 24px;" @click="nav('menu')">Return Home</button>
+                </div>
+            </div>
+
+            <div class="review-controls" :class="{ hidden: !isFlipped }">
+                <button class="rating-btn btn-again" @click="rate('again')">Again</button>
+                <button class="rating-btn btn-hard" @click="rate('hard')">Hard</button>
+                <button class="rating-btn btn-good" @click="rate('good')">Good</button>
+                <button class="rating-btn btn-easy" @click="rate('easy')">Easy</button>
+            </div>
+        </div>
+
+        <div id="screen-wordReview" class="screen" :class="{ active: currentScreen === 'wordReview' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> 
+                <div class="header-title">Dictionary</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+
+            <div class="wr-subheader">
+                <div class="wr-search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" v-model="wordSearch" class="wr-search-input" placeholder="Search Dutch or English...">
+                    <button v-if="wordSearch" class="hidden" @click="wordSearch = ''" :class="{ hidden: !wordSearch }">✕</button>
+                </div>
+                
+                <div class="wr-filters">
+                    <button class="filter-pill" :class="{ active: wordFilter === 'all' }" @click="wordFilter = 'all'">All</button>
+                    <button class="filter-pill" :class="{ active: wordFilter === 'due' }" @click="wordFilter = 'due'">Due</button>
+                    <button class="filter-pill" :class="{ active: wordFilter === 'new' }" @click="wordFilter = 'new'">New</button>
+                    <button class="filter-pill" :class="{ active: wordFilter === 'suspended' }" @click="wordFilter = 'suspended'">Frozen</button>
+                </div>
+            </div>
+
+            <div class="content-scroll" style="padding-top: 0;">
+                <div class="wr-tools">
+                    <span style="color:var(--text-sub); font-size:0.9rem;">{{ filteredWords.length }} Words</span>
+                    <select v-model="sortCol" class="minimal-select">
+                        <option value="dutch">A-Z (Dutch)</option>
+                        <option value="english">A-Z (English)</option>
+                        <option value="last_reviewed">Recent</option>
+                        <option value="due_date">Due Date</option>
+                    </select>
+                </div>
+
+                <div class="review-table-container">
+                    <div v-if="filteredWords.length === 0" class="center-msg">No words found.</div>
+                    
+                    <div v-for="c in filteredWords" :key="c.id" class="review-item">
+                        <div class="ri-text">
+                            <div class="ri-dutch">{{ c.dutch }}</div>
+                            <div class="ri-eng">{{ c.english }}</div>
+                            <div class="ri-meta">
+                                <span v-if="c.suspended" class="ri-badge bg-susp">Frozen</span>
+                                <span v-else-if="c.type === 'new'" class="ri-badge bg-new">New</span>
+                                <span v-else-if="isDue(c.due_date)" class="ri-badge bg-due">Due</span>
+                                <span v-else class="ri-badge bg-ok">{{ formatDateShort(c.due_date) }}</span>
+                                <span style="color:#ccc">•</span>
+                                <span>Ease: {{ Math.round((c.ease || 2.5)*100) }}%</span>
+                            </div>
+                        </div>
+                        <div class="ri-actions">
+                            <button class="icon-btn" :class="{ 'img-active': c.image_url }" @click="openImageSelector('wordReview', c)">
+                                🖼
+                            </button>
+                            <button class="icon-btn" :style="c.suspended ? 'background:#ffebee; color:red;' : ''" @click="toggleSuspend(c)">
+                                {{ c.suspended ? '❄️' : '🚫' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-selectImage" class="screen" :class="{ active: currentScreen === 'selectImage' }">
+            <div class="app-header">
+                <button class="btn-icon" @click="exitImageSelector">⬅️</button> 
+                <div class="header-title">Select Image</div>
+                <div style="width:40px;"></div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated content-block">
+                    <div class="search-row">
+                        <input v-model="imgSearchQuery" class="search-input" placeholder="Search Unsplash...">
+                        <button class="search-btn" @click="searchImages">Search</button>
+                    </div>
+                    <div v-if="imgLoading" class="center-msg" style="margin:10px 0; font-size: 1.5rem;">Searching...</div>
+                    <div class="image-grid">
+                        <div v-for="img in imgResults" :key="img.id" 
+                             class="image-item" 
+                             :class="{ selected: selectedImageUrl === img.urls.regular }"
+                             @click="selectedImageUrl = img.urls.regular">
+                            <img :src="img.urls.thumb" />
+                        </div>
+                    </div>
+                    <div v-if="!imgLoading && imgResults.length === 0" class="center-msg">No results.</div>
+                </div>
+                
+                <div class="container-elevated content-block">
+                    <button class="save-img-btn" :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-report" class="screen" :class="{ active: currentScreen === 'report' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> 
+                <div class="header-title">Report</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+            <div class="content-scroll">
+                
+                <div class="container-elevated content-block">
+                    <div class="header-title" style="margin-bottom:12px; font-size:2.5rem; position:relative; left:0; transform:none; text-align:left;">Mastery History</div>
+                    <div id="mastery-history-chart" style="width:100%; height:300px;"></div>
+                </div>
+
+                <div class="container-elevated content-block">
+                    <div class="header-title" style="margin-bottom:12px; font-size:2.5rem; position:relative; left:0; transform:none; text-align:left;">Current Mastery</div>
+                    <div id="status-chart-div" style="width:100%; height:300px;"></div>
+                </div>
+
+                <div class="container-elevated content-block">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <div class="header-title" style="font-size:2.5rem; position:relative; left:0; transform:none; text-align:left;">Activity</div>
+                        <select v-model="reportGroup" class="custom-select" style="flex:0 0 140px; margin: 0; padding: 8px; font-size: 1.2rem;">
+                            <option value="day">Day</option>
+                            <option value="week">Week</option>
+                            <option value="month">Month</option>
+                            <option value="year">Year</option>
+                        </select>
+                    </div>
+                    <div id="chart-div" style="width:100%; height:300px;"></div>
+                    <div class="center-msg" style="font-size:0.8rem; margin-top:10px;">Total Reviews: {{ reviewHistory.length }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-settings" class="screen" :class="{ active: currentScreen === 'settings' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> 
+                <div class="header-title">Settings</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated content-block container-centered">
+                    <div class="header-title">Daily New Cards</div>
+                    <p style="color:var(--text-sub); font-size:0.9rem;">Maximum new words to introduce per day.</p>
+                    <select v-model="settingsMaxNew" class="custom-select" style="width:100%;">
+                        <option value="5">5 cards</option>
+                        <option value="10">10 cards</option>
+                        <option value="15">15 cards</option>
+                        <option value="20">20 cards</option>
+                        <option value="30">30 cards</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+
+</body>
+</html>
