@@ -128,11 +128,18 @@
         /* Dictionary */
         .search-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .search-input { flex:1; padding: 20px; border: 1px solid #ddd; border-radius: 16px; font-size: 1.5rem; }
+        
+        /* Dictionary Specific Overrides for Font Size */
+        #screen-wordReview .search-input { font-size: 2.25rem; }
+        #screen-wordReview .filter-pill { font-size: 1.8rem; }
+        
         .filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
         .filter-pill { background: #eee; border: none; padding: 8px 16px; border-radius: 20px; font-size: 1.2rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .filter-pill.active { background: var(--text-main); color: white; }
-        .ri-text { font-size: 1.4rem; font-weight: 700; }
-        .ri-sub { font-size: 1rem; color: #777; }
+        
+        /* Scaled up Dictionary Text (+50%) */
+        .ri-text { font-size: 2.1rem; font-weight: 700; }
+        .ri-sub { font-size: 1.5rem; color: #777; }
 
         /* Image Search Grid */
         .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 10px; }
@@ -158,7 +165,7 @@
         
         <div id="screen-menu" class="screen" :class="{ active: !loading.show && currentScreen === 'menu' }">
             <div class="app-header">
-                <div class="header-title">🇳🇱 Dutch Cards</div>
+                <div class="header-title">🇳🇱 Dutch Cards 🇬🇧</div>
             </div>
             <div class="content-scroll">
                 <div class="container-elevated"> 
@@ -281,7 +288,7 @@
                 </div>
 
                 <div style="text-align:right; margin-bottom:10px;">
-                    <select v-model="sortCol" style="font-size:1.2rem; padding:5px;">
+                    <select v-model="sortCol" style="font-size:1.8rem; padding:5px;">
                         <option value="dutch">A-Z (Dutch)</option>
                         <option value="english">A-Z (English)</option>
                         <option value="last_reviewed">Recent</option>
@@ -294,7 +301,7 @@
                         <div>
                             <div class="ri-text">{{ c.dutch }}</div>
                             <div class="ri-sub">{{ c.english }}</div>
-                            <div class="ri-sub" style="font-size:0.8rem; margin-top:5px;">
+                            <div class="ri-sub" style="font-size:1.2rem; margin-top:5px;">
                                 <span v-if="c.suspended" style="color:red; background:#ffebee; padding:2px 6px; border-radius:4px;">FROZEN</span>
                                 <span v-else style="color:green; background:#e8f5e9; padding:2px 6px; border-radius:4px;">{{ c.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                             </div>
