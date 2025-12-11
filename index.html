@@ -44,53 +44,20 @@
         /* Components */
         .container-elevated { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; padding: 24px; }
         
-        /* --- UPDATED PROGRESS WIDGET STYLES --- */
-        .progress-widget { background: #F8F9FA; border-radius: var(--radius-md); padding: 20px 10px; margin-top: 10px; width: 100%; }
-        
+        /* --- PROGRESS WIDGET --- */
+        .progress-widget { background: #F8F9FA; border-radius: var(--radius-md); padding: 20px 10px; margin-top: 40px; width: 100%; }
         .pw-grid { 
             display: grid; 
-            /* Label gets what it needs, Numbers share remaining space equally */
             grid-template-columns: max-content 1fr 10px 1fr; 
             align-items: center; 
             row-gap: 15px; 
             column-gap: 5px;
             width: 100%;
         }
-
-        /* Scaled up fonts by ~50% */
-        .pw-head { 
-            font-size: 2.5rem; /* Was 2.5rem */
-            font-weight: 700; 
-            color: #ADB5BD; 
-            text-align: center; 
-            line-height: 1;
-        }
-
-        .pw-label { 
-            font-size: 2.25rem; /* Was 1.5rem */
-            font-weight: 600; 
-            color: var(--text-sub); 
-            text-align: right; 
-            padding-right: 15px; 
-            white-space: nowrap; /* Prevent wrapping */
-        }
-
-        .pw-val { 
-            font-size: 2.7rem; /* Was 1.8rem */
-            font-weight: 800; 
-            color: var(--primary); 
-            text-align: center; 
-            line-height: 1;
-        }
-
-        .pw-div-vert { 
-            width: 4px; 
-            height: 45px; /* Taller to match new font size */
-            background: #E9ECEF; 
-            margin: 0 auto; 
-            border-radius: 2px;
-        }
-        /* ------------------------------------- */
+        .pw-head { font-size: 2.5rem; font-weight: 700; color: #ADB5BD; text-align: center; line-height: 1; }
+        .pw-label { font-size: 2.25rem; font-weight: 600; color: var(--text-sub); text-align: right; padding-right: 15px; white-space: nowrap; }
+        .pw-val { font-size: 2.7rem; font-weight: 800; color: var(--primary); text-align: center; line-height: 1; }
+        .pw-div-vert { width: 4px; height: 45px; background: #E9ECEF; margin: 0 auto; border-radius: 2px; }
 
         /* Menu */
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
@@ -129,7 +96,7 @@
         .search-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .search-input { flex:1; padding: 20px; border: 1px solid #ddd; border-radius: 16px; font-size: 1.5rem; }
         
-        /* Dictionary Specific Overrides for Font Size */
+        /* Dictionary Specific Overrides (Large Text) */
         #screen-wordReview .search-input { font-size: 2.25rem; }
         #screen-wordReview .filter-pill { font-size: 1.8rem; }
         
@@ -137,7 +104,6 @@
         .filter-pill { background: #eee; border: none; padding: 8px 16px; border-radius: 20px; font-size: 1.2rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
         .filter-pill.active { background: var(--text-main); color: white; }
         
-        /* Scaled up Dictionary Text (+50%) */
         .ri-text { font-size: 2.1rem; font-weight: 700; }
         .ri-sub { font-size: 1.5rem; color: #777; }
 
@@ -358,12 +324,11 @@
     </div>
 </div>
 
-<script>
-// --- YOUR KEYS ---
-const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
-const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
-const APP_VERSION = "5.5"; // Bumped version
+<script type="module">
+// --- IMPORTS ---
+import { SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW } from './constants.js';
+
+const APP_VERSION = "5.6"; 
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -446,10 +411,9 @@ const app = createApp({
     async mounted() {
         try {
             this.loading.msg = "Connecting...";
-            this.settingsMaxNew = localStorage.getItem("dutch_max_new_v1") || "10";
+            this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
             
             this.loading.msg = "Loading Cards...";
-            // UPDATED: Increased limit to 10,000 to ensure all cards (including high IDs) are loaded
             let { data: cards, error: err1 } = await supabase.from("cards").select("*").range(0, 10000);
             if(err1) throw err1;
             this.allCards = cards || [];
@@ -491,7 +455,7 @@ const app = createApp({
                     }).eq("id", c.id);
                 }
             }
-            localStorage.setItem("dutch_max_new_v1", this.settingsMaxNew);
+            localStorage.setItem(CONFIG_MAX_NEW, this.settingsMaxNew);
             this.loading.show = false;
         },
         startSession() {
