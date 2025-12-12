@@ -46,7 +46,7 @@
         
         /* --- PROGRESS WIDGET --- */
         /* Updated: Increased top padding for visual gap */
-        .progress-widget { background: #F8F9FA; border-radius: var(--radius-md); padding: 30px 10px 20px 10px; margin-top: 40px; width: 100%; }
+        .progress-widget { background: #F8F9FA; border-radius: var(--radius-md); padding: 35px 10px 20px 10px; margin-top: 40px; width: 100%; }
         .pw-grid { 
             display: grid; 
             grid-template-columns: max-content 1fr 10px 1fr; 
@@ -138,7 +138,7 @@
             </div>
             <div class="content-scroll">
                 <div class="container-elevated"> 
-                    <div class="header-title" style="font-size:3rem; text-align:center; margin-bottom:25px;">Today's Progress</div>
+                    <div class="header-title" style="font-size:3rem; text-align:center; margin-bottom:40px;">Today's Progress</div>
                     <div class="progress-widget">
                         <div class="pw-grid">
                             <div></div> <div class="pw-head">NEW</div> <div class="pw-div-vert"></div> <div class="pw-head">REVIEW</div>
@@ -437,7 +437,7 @@ const app = createApp({
             if(id === 'menu') await this.saveProgress();
             this.currentScreen = id;
             if(id === 'learn') this.startSession();
-            if(id === 'report') setTimeout(this.drawCharts, 300);
+            if(id === 'report') setTimeout(this.drawCharts, 500); // Increased delay
         },
         async saveProgress() {
             this.loading = { show:true, msg:"Saving..." };
@@ -467,7 +467,12 @@ const app = createApp({
             let n = this.allCards.filter(c => !c.suspended && c.type==="new");
             n.sort(() => Math.random() - 0.5);
             const limit = Math.max(0, max - done);
-            this.sessionQueue = [...due, ...n.slice(0, limit)];
+            
+            // Updated: Combine both lists and shuffle them
+            let combined = [...due, ...n.slice(0, limit)];
+            combined.sort(() => Math.random() - 0.5);
+            
+            this.sessionQueue = combined;
             this.sessionTotal = this.sessionQueue.length;
             this.currentIndex = 0;
             this.sessionStarted = true;
@@ -539,10 +544,10 @@ const app = createApp({
             this.exitImageSelector();
         },
         drawCharts() {
-            // Options to prevent label clipping
+            // Options to prevent label clipping: 15% Left Margin
             const commonOpts = { 
-                chartArea: { width: '85%', height: '70%' },
-                legend: 'bottom'
+                chartArea: { left: '15%', width: '70%', height: '70%' },
+                legend: { position: 'bottom' }
             };
 
             // 1. Mastery Status
@@ -562,7 +567,6 @@ const app = createApp({
             // 2. Activity (Day)
             const today = new Date(); const m = today.getMonth();
             const map = new Map();
-            // FIXED: Used today.getFullYear() instead of hardcoded 2024
             for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) map.set(d.toISOString().slice(0,10), {new:0, rev:0, d:new Date(d)});
             this.reviewHistory.forEach(h => {
                 const k = h.timestamp.slice(0,10);
