@@ -248,8 +248,7 @@
                             <img :src="img.urls.thumb" />
                         </div>
                     </div>
-                    <button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white;" 
-                            :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
+<button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white; aspect-ratio:auto; height:auto; padding:20px; font-size:2rem;" :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
                 </div>
             </div>
         </div>
