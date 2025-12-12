@@ -131,14 +131,14 @@
         
         <div id="screen-menu" class="screen" :class="{ active: !loading.show && currentScreen === 'menu' }">
             <div class="app-header">
-                <div class="header-title">🇳🇱 Dutch Cards 🇬🇧</div>
+                <div class="header-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
             </div>
             <div class="content-scroll">
                 <div class="container-elevated"> 
-                    <div class="header-title" style="font-size:2rem; text-align:center; margin-bottom:10px;">Today's Progress</div>
+                    <div class="header-title" style="font-size:3rem; text-align:center; margin-bottom:10px;">Today's Progress</div>
                     <div class="progress-widget">
                         <div class="pw-grid">
-                            <div></div> <div class="pw-head">NEW</div> <div class="pw-div-vert"></div> <div class="pw-head">REV</div>
+                            <div></div> <div class="pw-head">NEW</div> <div class="pw-div-vert"></div> <div class="pw-head">REVIEW</div>
                             <div class="pw-label">Due Today</div>
                             <div class="pw-val">{{ stats.dueNew }}</div> <div class="pw-div-vert"></div> <div class="pw-val">{{ stats.dueReview }}</div>
                             <div class="pw-label">Tomorrow</div>
