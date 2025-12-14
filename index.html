@@ -124,16 +124,31 @@
         .ri-sub { font-size: 1.5rem; color: #777; }
 
         /* Image Search Grid */
-.image-grid { 
-    display: grid; 
-    /* Changed from repeat(auto-fill, minmax(100px, 1fr)) to repeat(3, 1fr) */
-    grid-template-columns: repeat(3, 1fr); 
-    gap: 10px; 
-    margin-top: 10px; 
-}
+        .image-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+            margin-top: 10px; 
+        }
         .image-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 4px solid transparent; cursor: pointer; }
         .image-item.selected { border-color: var(--primary); }
         .image-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* --- REPORT CHART SPECIFIC STYLES --- */
+        .chart-heading {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            text-align: left;
+            /* Ensures it sits in document flow, unlike .header-title */
+            position: relative; 
+        }
+        .chart-wrapper {
+            width: 100%;
+            height: 350px;
+            overflow: hidden;
+        }
 
         .hidden { display: none !important; }
         .center-msg { text-align: center; color: black; margin-top: 40px; font-size: 2.5rem; }
@@ -157,7 +172,7 @@
             </div>
             <div class="content-scroll">
                 <div class="container-elevated"> 
-                    <div class="header-title" style="font-size:3rem; text-align:center; margin-bottom:60px;">Today's Progress</div>
+                    <div class="header-title" style="font-size:3rem; text-align:center; margin-bottom:60px; position: relative; transform: none; left: auto;">Today's Progress</div>
                     <div class="progress-widget">
                         <div class="pw-grid">
                             <div></div> <div class="pw-head">NEW</div> <div class="pw-div-vert"></div> <div class="pw-head">REVIEW</div>
@@ -253,7 +268,7 @@
                             <img :src="img.urls.thumb" />
                         </div>
                     </div>
-<button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white; aspect-ratio:auto; height:auto; padding:20px; font-size:2rem;" :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
+                    <button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white; aspect-ratio:auto; height:auto; padding:20px; font-size:2rem;" :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
                 </div>
             </div>
         </div>
@@ -307,18 +322,22 @@
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
             </div>
             <div class="content-scroll">
+                
                 <div class="container-elevated">
-                    <div class="header-title" style="font-size:2rem; text-align:left; margin-bottom:30px;">Mastery History</div>
-                    <div id="mastery-history-chart" style="width:100%; height:350px;"></div>
+                    <div class="chart-heading">Mastery History</div>
+                    <div id="mastery-history-chart" class="chart-wrapper"></div>
                 </div>
+                
                 <div class="container-elevated">
-                    <div class="header-title" style="font-size:2rem; text-align:left; margin-bottom:30px;">Current Status</div>
-                    <div id="status-chart-div" style="width:100%; height:350px;"></div>
+                    <div class="chart-heading">Current Status</div>
+                    <div id="status-chart-div" class="chart-wrapper"></div>
                 </div>
+                
                 <div class="container-elevated">
-                    <div class="header-title" style="font-size:2rem; text-align:left; margin-bottom:30px;">Activity</div>
-                    <div id="chart-div" style="width:100%; height:350px;"></div>
+                    <div class="chart-heading">Activity Log</div>
+                    <div id="chart-div" class="chart-wrapper"></div>
                 </div>
+
             </div>
         </div>
 
@@ -329,7 +348,7 @@
             </div>
             <div class="content-scroll">
                 <div class="container-elevated">
-                    <div class="header-title" style="font-size:2rem; margin-bottom:10px;">Daily New Cards</div>
+                    <div class="header-title" style="font-size:2rem; margin-bottom:10px; position:relative; transform:none; left:auto;">Daily New Cards</div>
                     <select v-model="settingsMaxNew" style="width:100%; font-size:2rem; padding:15px; border-radius:12px;">
                         <option value="5">5 cards</option>
                         <option value="10">10 cards</option>
@@ -442,6 +461,11 @@ const app = createApp({
             this.reviewHistory = hist || [];
 
             if(window.google) google.charts.load('current', {'packages':['corechart']});
+            
+            // Add resize listener for charts
+            window.addEventListener('resize', () => {
+                if(this.currentScreen === 'report') this.drawCharts();
+            });
 
             this.loading.show = false;
         } catch (e) {
@@ -485,7 +509,7 @@ const app = createApp({
             n.sort(() => Math.random() - 0.5);
             const limit = Math.max(0, max - done);
             
-            // Updated: Combine both lists and shuffle them
+            // Combined shuffle
             let combined = [...due, ...n.slice(0, limit)];
             combined.sort(() => Math.random() - 0.5);
             
@@ -524,9 +548,7 @@ const app = createApp({
             this.resetCard();
         },
         speakTTS() {
-            // Guard clause: Disable TTS if card is flipped (English side active)
             if(!this.currentCard || this.isFlipped) return;
-            
             const u = new SpeechSynthesisUtterance(this.currentCard.dutch);
             u.lang = "nl-NL";
             window.speechSynthesis.speak(u);
@@ -563,11 +585,11 @@ const app = createApp({
             this.exitImageSelector();
         },
         drawCharts() {
-            // Updated: significantly reduced width/height percentages and increased margins
-            // to prevent label overlapping/cutting.
+            // Optimized Chart Area to prevent label clipping
             const commonOpts = { 
-                chartArea: { left: '20%', width: '60%', height: '65%' },
-                legend: { position: 'bottom' }
+                chartArea: { width: '85%', height: '70%', top: 20 }, 
+                legend: { position: 'bottom' },
+                backgroundColor: 'transparent'
             };
 
             // 1. Mastery Status
