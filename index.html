@@ -35,6 +35,10 @@
         /* Layout */
         #app-container { display: flex; flex-direction: column; position: relative; overflow: hidden; width: 100%; height: 100%; }
         .content-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; padding-bottom: calc(40px + var(--safe-area-bottom)); display: flex; flex-direction: column; }
+        
+        /* Specific List Scroll for Dictionary to ensure it scrolls independently of the search bar */
+        .list-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; padding-top: 0; padding-bottom: calc(40px + var(--safe-area-bottom)); }
+        .fixed-controls { flex-shrink: 0; padding: 16px; background: var(--bg-app); z-index: 10; }
 
         /* Header */
         .app-header { height: calc(100px + var(--safe-area-top)); padding-top: var(--safe-area-top); background: var(--bg-card); display: flex; align-items: center; justify-content: space-between; padding-left: 16px; padding-right: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 50; flex-shrink: 0; }
@@ -77,7 +81,7 @@
         .flashcard.flipped { transform: rotateY(180deg); }
         .flashcard.no-transition { transition: none !important; }
         
-        /* Updated Face Logic to prevent click-through */
+        /* Face Logic */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; 
             border-radius: 24px; background: var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
@@ -87,7 +91,6 @@
         }
         .face.back { transform: rotateY(180deg); }
 
-        /* Only enable pointer events on the active face */
         .flashcard:not(.flipped) .face.front { pointer-events: auto; z-index: 10; }
         .flashcard.flipped .face.back { pointer-events: auto; z-index: 10; }
         .flashcard.flipped .face.front { z-index: 0; }
@@ -113,8 +116,8 @@
         .search-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .search-input { flex:1; padding: 20px; border: 1px solid #ddd; border-radius: 16px; font-size: 1.5rem; }
         
-        /* Dictionary Specific Overrides (Large Text) */
-        #screen-wordReview .search-input { font-size: 2.25rem; margin-bottom: 30px; }
+        /* Dictionary Specific Overrides */
+        #screen-wordReview .search-input { font-size: 2.25rem; margin-bottom: 10px; }
         #screen-wordReview .filter-pill { font-size: 1.8rem; }
         
         .filter-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
@@ -128,8 +131,9 @@
         .edit-label { font-size: 1.5rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; display: block; margin-top: 20px; }
         .edit-input { width: 100%; padding: 20px; font-size: 2rem; border: 1px solid #ddd; border-radius: 16px; font-weight: 600; background: #fff; }
         .edit-preview-img { width: 100%; height: 250px; object-fit: contain; background: #eee; border-radius: 16px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ddd; }
-        .btn-large { width: 100%; padding: 20px; background: var(--primary); color: white; font-size: 1.8rem; font-weight: 700; border: none; border-radius: 16px; margin-top: 30px; cursor: pointer; }
+        .btn-large { width: 100%; padding: 20px; background: var(--primary); color: white; font-size: 1.8rem; font-weight: 700; border: none; border-radius: 16px; margin-top: 20px; cursor: pointer; }
         .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 10px; }
+        .btn-danger { background: var(--color-again); margin-top: 10px; }
 
         /* Image Search Grid */
         .image-grid { 
@@ -142,7 +146,7 @@
         .image-item.selected { border-color: var(--primary); }
         .image-item img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* --- REPORT CHART SPECIFIC STYLES --- */
+        /* Chart Styles */
         .chart-heading {
             font-size: 2.25rem;
             font-weight: 700;
@@ -260,7 +264,8 @@
                 <div style="width:50px;"></div> <div class="header-title">Dictionary</div>
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
             </div>
-            <div class="content-scroll">
+            
+            <div class="fixed-controls">
                 <input type="text" v-model="wordSearch" class="search-input" placeholder="Search...">
                 
                 <div class="filter-row">
@@ -270,14 +275,16 @@
                     <button class="filter-pill" :class="{active: wordFilter==='suspended'}" @click="wordFilter='suspended'">Frozen</button>
                 </div>
 
-                <div style="text-align:right; margin-bottom:10px;">
+                <div style="text-align:right;">
                     <select v-model="sortCol" style="font-size:1.8rem; padding:5px;">
                         <option value="dutch">A-Z (Dutch)</option>
                         <option value="english">A-Z (English)</option>
                         <option value="last_reviewed">Recent</option>
                     </select>
                 </div>
+            </div>
 
+            <div class="list-scroll">
                 <div class="container-elevated">
                     <div style="color:#999; margin-bottom:10px;">{{ filteredWords.length }} Words</div>
                     <div v-for="c in filteredWords" :key="c.id" style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
@@ -323,6 +330,8 @@
                     </button>
 
                     <button class="btn-large" @click="saveEditCard">Save Changes</button>
+                    
+                    <button class="btn-large btn-danger" @click="deleteCard">Delete Card</button>
                 </div>
             </div>
         </div>
@@ -605,7 +614,6 @@ const app = createApp({
         startEditCard(card, fromScreen) {
             this.cardToEdit = card;
             this.editReturnScreen = fromScreen;
-            // Create a copy so we can cancel edits
             this.editForm = {
                 id: card.id,
                 dutch: card.dutch,
@@ -616,10 +624,7 @@ const app = createApp({
         },
         async saveEditCard() {
             if(!this.cardToEdit) return;
-            
             this.loading = { show: true, msg: "Saving..." };
-            
-            // 1. Update Supabase
             const { error } = await supabase.from("cards").update({
                 dutch: this.editForm.dutch,
                 english: this.editForm.english,
@@ -632,13 +637,43 @@ const app = createApp({
                 return;
             }
 
-            // 2. Update Local State
             this.cardToEdit.dutch = this.editForm.dutch;
             this.cardToEdit.english = this.editForm.english;
             this.cardToEdit.image_url = this.editForm.image_url;
 
             this.loading.show = false;
             this.currentScreen = this.editReturnScreen;
+        },
+        async deleteCard() {
+            if(!this.cardToEdit) return;
+            
+            if(!confirm("Are you sure you want to permanently delete this card? This cannot be undone.")) {
+                return;
+            }
+
+            this.loading = { show: true, msg: "Deleting..." };
+            
+            const { error } = await supabase.from("cards").delete().eq("id", this.cardToEdit.id);
+
+            if (error) {
+                alert("Error deleting: " + error.message);
+                this.loading.show = false;
+                return;
+            }
+            
+            // Remove from local list
+            this.allCards = this.allCards.filter(c => c.id !== this.cardToEdit.id);
+            
+            // If we were in a session, remove it from session queue if it exists there
+            this.sessionQueue = this.sessionQueue.filter(c => c.id !== this.cardToEdit.id);
+            if(this.sessionQueue.length === 0) {
+                 this.sessionTotal = 0; 
+                 this.sessionStarted = false;
+            }
+
+            this.loading.show = false;
+            // Return to dictionary primarily, or menu if that's safer
+            this.currentScreen = 'wordReview';
         },
         cancelEdit() {
             this.currentScreen = this.editReturnScreen;
@@ -647,16 +682,13 @@ const app = createApp({
         // --- IMAGE SELECTION ---
         openImageSelector(fromScreen, cardOverride=null) {
             this.imageReturnScreen = fromScreen;
-            
-            // If we are editing, populate search with edit form's english value
             if (fromScreen === 'editCard') {
                 this.imgSearchQuery = this.editForm.english;
-                this.cardForImage = null; // Not updating card directly
+                this.cardForImage = null; 
             } else {
                 this.cardForImage = cardOverride || this.currentCard;
                 this.imgSearchQuery = this.cardForImage.english;
             }
-            
             this.imgResults = [];
             this.selectedImageUrl = null;
             this.currentScreen = 'selectImage';
@@ -675,15 +707,11 @@ const app = createApp({
         },
         async saveSelectedImage() {
             if(!this.selectedImageUrl) return;
-
-            // IF we are in Edit Mode, just update the form and go back
             if (this.imageReturnScreen === 'editCard') {
                 this.editForm.image_url = this.selectedImageUrl;
                 this.exitImageSelector();
                 return;
             }
-
-            // OTHERWISE (Legacy/Direct mode), save to DB immediately
             if(!this.cardForImage) return;
             this.cardForImage.image_url = this.selectedImageUrl;
             await supabase.from("cards").update({ image_url: this.selectedImageUrl }).eq("id", this.cardForImage.id);
@@ -691,7 +719,6 @@ const app = createApp({
         },
 
         drawCharts() {
-            // Optimized Chart Area to prevent label clipping
             const commonOpts = { 
                 chartArea: { width: '85%', height: '70%', top: 20 }, 
                 legend: { position: 'bottom' },
@@ -741,7 +768,6 @@ const app = createApp({
             
             while(curDate <= todayStr) {
                 while(idx < history.length && history[idx].timestamp.slice(0,10) <= curDate) idx++;
-                // Snapshot
                 let s = {n:0, l:0, r:0, m:0};
                 for(const st of cardMap.values()) {
                     if(st.status==='new') s.n++;
