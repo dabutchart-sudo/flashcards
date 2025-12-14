@@ -136,7 +136,7 @@
         .image-item img { width: 100%; height: 100%; object-fit: cover; }
 
         .hidden { display: none !important; }
-        .center-msg { text-align: center; color: black; margin-top: 40px; font-size: 1.5rem; }
+        .center-msg { text-align: center; color: black; margin-top: 40px; font-size: 2.5rem; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #F4F6F8; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -222,7 +222,6 @@
                 <div v-if="!currentCard && sessionStarted" class="center-msg">
                     <h2>🎉 All caught up!</h2>
                     <p>No more cards due right now.</p>
-                    <button class="menu-btn" style="margin-top:20px; width:auto; padding:10px 40px;" @click="nav('menu')">Home</button>
                 </div>
             </div>
 
