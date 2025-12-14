@@ -40,6 +40,7 @@
         .app-header { height: calc(100px + var(--safe-area-top)); padding-top: var(--safe-area-top); background: var(--bg-card); display: flex; align-items: center; justify-content: space-between; padding-left: 16px; padding-right: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 50; flex-shrink: 0; }
         .header-title { font-weight: 700; font-size: 5rem; color: var(--text-main); text-align: center; position: absolute; left: 50%; transform: translateX(-50%); width: 100%; pointer-events: none; }
         .btn-icon { background: none; border: none; font-size: 4.5rem; cursor: pointer; padding: 8px; z-index: 2; }
+        .btn-text { background: none; border: none; font-size: 1.2rem; font-weight: 600; color: var(--primary); cursor: pointer; z-index: 2; }
 
         /* Components */
         .container-elevated { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; padding: 24px; }
@@ -102,7 +103,7 @@
         /* Interaction Buttons */
         .tts-btn { position: absolute; bottom: 20px; left: 20px !important; right: auto !important; background: none; border: none; font-size: 3rem; cursor: pointer; z-index: 10; }
         .hint-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 3rem; cursor: pointer; z-index: 10; }
-        .edit-img-btn { position: absolute; bottom: 20px; right: 20px; background: #eee; border: none; border-radius: 12px; padding: 15px 30px; font-weight: 700; font-size: 1.5rem; cursor: pointer; z-index: 10; }
+        .edit-card-btn { position: absolute; bottom: 20px; right: 20px; background: #eee; border: none; border-radius: 12px; padding: 15px 30px; font-weight: 700; font-size: 1.5rem; cursor: pointer; z-index: 10; }
 
         /* Rating Controls */
         .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; padding-bottom: calc(30px + var(--safe-area-bottom)); background: rgba(255,255,255,0.95); border-top: 1px solid #eee; display: flex; gap: 12px; z-index: 100; }
@@ -123,6 +124,13 @@
         .ri-text { font-size: 2.1rem; font-weight: 700; }
         .ri-sub { font-size: 1.5rem; color: #777; }
 
+        /* Edit Card Screen Styles */
+        .edit-label { font-size: 1.5rem; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; display: block; margin-top: 20px; }
+        .edit-input { width: 100%; padding: 20px; font-size: 2rem; border: 1px solid #ddd; border-radius: 16px; font-weight: 600; background: #fff; }
+        .edit-preview-img { width: 100%; height: 250px; object-fit: contain; background: #eee; border-radius: 16px; margin-top: 10px; margin-bottom: 10px; border: 1px solid #ddd; }
+        .btn-large { width: 100%; padding: 20px; background: var(--primary); color: white; font-size: 1.8rem; font-weight: 700; border: none; border-radius: 16px; margin-top: 30px; cursor: pointer; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 10px; }
+
         /* Image Search Grid */
         .image-grid { 
             display: grid; 
@@ -141,7 +149,6 @@
             color: var(--text-main);
             margin-bottom: 10px;
             text-align: left;
-            /* Ensures it sits in document flow, unlike .header-title */
             position: relative; 
         }
         .chart-wrapper {
@@ -219,7 +226,7 @@
                         
                         <button class="tts-btn" @click.stop="speakTTS">🔊</button>
                         <button v-if="currentCard.image_url" class="hint-btn" @click.stop="showHint = !showHint">💡</button>
-                        <button class="edit-img-btn" @click.stop="openImageSelector('learn')">🖼 Edit</button>
+                        <button class="edit-card-btn" @click.stop="startEditCard(currentCard, 'learn')">✏️ Edit Card</button>
                     </div>
 
                     <div class="face back">
@@ -230,7 +237,7 @@
                         <div class="face-content">
                             <div class="word-text" style="font-size:3rem;">{{ currentCard.english }}</div>
                         </div>
-                        <button class="edit-img-btn" @click.stop="openImageSelector('learn')">🖼 Edit</button>
+                        <button class="edit-card-btn" @click.stop="startEditCard(currentCard, 'learn')">✏️ Edit Card</button>
                     </div>
                 </div>
                 
@@ -245,31 +252,6 @@
                 <button class="rating-btn" style="background:#FFCA3A" @click="rate('hard')">Hard</button>
                 <button class="rating-btn" style="background:#8AC926" @click="rate('good')">Good</button>
                 <button class="rating-btn" style="background:#1982C4" @click="rate('easy')">Easy</button>
-            </div>
-        </div>
-
-        <div id="screen-selectImage" class="screen" :class="{ active: currentScreen === 'selectImage' }">
-            <div class="app-header">
-                <button class="btn-icon" @click="exitImageSelector">⬅️</button>
-                <div class="header-title">Select Image</div>
-                <div style="width:50px;"></div>
-            </div>
-            <div class="content-scroll">
-                <div class="container-elevated">
-                    <div class="search-row">
-                        <input v-model="imgSearchQuery" class="search-input" placeholder="Search Unsplash...">
-                        <button class="menu-btn" style="width:auto; padding:10px 20px; margin:0;" @click="searchImages">Go</button>
-                    </div>
-                    <div v-if="imgLoading" class="center-msg">Searching...</div>
-                    <div class="image-grid">
-                        <div v-for="img in imgResults" :key="img.id" class="image-item" 
-                             :class="{ selected: selectedImageUrl === img.urls.regular }"
-                             @click="selectedImageUrl = img.urls.regular">
-                            <img :src="img.urls.thumb" />
-                        </div>
-                    </div>
-                    <button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white; aspect-ratio:auto; height:auto; padding:20px; font-size:2rem;" :disabled="!selectedImageUrl" @click="saveSelectedImage">Save Image</button>
-                </div>
             </div>
         </div>
 
@@ -308,10 +290,66 @@
                             </div>
                         </div>
                         <div style="display:flex; gap:10px;">
-                            <button style="font-size:1.5rem; border:none; background:none;" @click="openImageSelector('wordReview', c)">🖼</button>
+                            <button style="font-size:1.5rem; border:none; background:none;" @click="startEditCard(c, 'wordReview')">✏️</button>
                             <button style="font-size:1.5rem; border:none; background:none;" @click="toggleSuspend(c)">{{ c.suspended ? '❄️' : '🚫' }}</button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-editCard" class="screen" :class="{ active: currentScreen === 'editCard' }">
+            <div class="app-header">
+                <button class="btn-text" @click="cancelEdit">Cancel</button>
+                <div class="header-title">Edit Card</div>
+                <div style="width:50px;"></div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <label class="edit-label">Dutch Word</label>
+                    <input class="edit-input" v-model="editForm.dutch" placeholder="Dutch">
+                    
+                    <label class="edit-label">English Definition</label>
+                    <input class="edit-input" v-model="editForm.english" placeholder="English">
+                    
+                    <label class="edit-label">Image</label>
+                    <div v-if="editForm.image_url">
+                        <img :src="editForm.image_url" class="edit-preview-img">
+                    </div>
+                    <div v-else style="text-align:center; padding:20px; color:#999; border:1px dashed #ccc; border-radius:16px; margin-top:10px;">No Image Selected</div>
+                    
+                    <button class="btn-large btn-outline" @click="openImageSelector('editCard')">
+                        {{ editForm.image_url ? 'Change Image' : 'Select Image' }}
+                    </button>
+
+                    <button class="btn-large" @click="saveEditCard">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-selectImage" class="screen" :class="{ active: currentScreen === 'selectImage' }">
+            <div class="app-header">
+                <button class="btn-icon" @click="exitImageSelector">⬅️</button>
+                <div class="header-title">Select Image</div>
+                <div style="width:50px;"></div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <div class="search-row">
+                        <input v-model="imgSearchQuery" class="search-input" placeholder="Search Unsplash...">
+                        <button class="menu-btn" style="width:auto; padding:10px 20px; margin:0;" @click="searchImages">Go</button>
+                    </div>
+                    <div v-if="imgLoading" class="center-msg">Searching...</div>
+                    <div class="image-grid">
+                        <div v-for="img in imgResults" :key="img.id" class="image-item" 
+                             :class="{ selected: selectedImageUrl === img.urls.regular }"
+                             @click="selectedImageUrl = img.urls.regular">
+                            <img :src="img.urls.thumb" />
+                        </div>
+                    </div>
+                    <button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white; aspect-ratio:auto; height:auto; padding:20px; font-size:2rem;" :disabled="!selectedImageUrl" @click="saveSelectedImage">
+                        {{ imageReturnScreen === 'editCard' ? 'Use This Image' : 'Save Image' }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -389,6 +427,11 @@ const app = createApp({
             disableTransition: false,
             sessionStarted: false,
             showHint: false, 
+            
+            // Edit Card State
+            editForm: { id: null, dutch: '', english: '', image_url: '' },
+            editReturnScreen: 'menu',
+            cardToEdit: null,
             
             // Image Search
             imgSearchQuery: '',
@@ -557,10 +600,63 @@ const app = createApp({
             card.suspended = !card.suspended;
             await supabase.from("cards").update({ suspended: card.suspended }).eq("id", card.id);
         },
+        
+        // --- EDIT CARD LOGIC ---
+        startEditCard(card, fromScreen) {
+            this.cardToEdit = card;
+            this.editReturnScreen = fromScreen;
+            // Create a copy so we can cancel edits
+            this.editForm = {
+                id: card.id,
+                dutch: card.dutch,
+                english: card.english,
+                image_url: card.image_url
+            };
+            this.currentScreen = 'editCard';
+        },
+        async saveEditCard() {
+            if(!this.cardToEdit) return;
+            
+            this.loading = { show: true, msg: "Saving..." };
+            
+            // 1. Update Supabase
+            const { error } = await supabase.from("cards").update({
+                dutch: this.editForm.dutch,
+                english: this.editForm.english,
+                image_url: this.editForm.image_url
+            }).eq("id", this.editForm.id);
+
+            if (error) {
+                alert("Error saving: " + error.message);
+                this.loading.show = false;
+                return;
+            }
+
+            // 2. Update Local State
+            this.cardToEdit.dutch = this.editForm.dutch;
+            this.cardToEdit.english = this.editForm.english;
+            this.cardToEdit.image_url = this.editForm.image_url;
+
+            this.loading.show = false;
+            this.currentScreen = this.editReturnScreen;
+        },
+        cancelEdit() {
+            this.currentScreen = this.editReturnScreen;
+        },
+
+        // --- IMAGE SELECTION ---
         openImageSelector(fromScreen, cardOverride=null) {
             this.imageReturnScreen = fromScreen;
-            this.cardForImage = cardOverride || this.currentCard;
-            this.imgSearchQuery = this.cardForImage.english;
+            
+            // If we are editing, populate search with edit form's english value
+            if (fromScreen === 'editCard') {
+                this.imgSearchQuery = this.editForm.english;
+                this.cardForImage = null; // Not updating card directly
+            } else {
+                this.cardForImage = cardOverride || this.currentCard;
+                this.imgSearchQuery = this.cardForImage.english;
+            }
+            
             this.imgResults = [];
             this.selectedImageUrl = null;
             this.currentScreen = 'selectImage';
@@ -578,12 +674,22 @@ const app = createApp({
             this.imgLoading = false;
         },
         async saveSelectedImage() {
-            if(!this.selectedImageUrl || !this.cardForImage) return;
+            if(!this.selectedImageUrl) return;
+
+            // IF we are in Edit Mode, just update the form and go back
+            if (this.imageReturnScreen === 'editCard') {
+                this.editForm.image_url = this.selectedImageUrl;
+                this.exitImageSelector();
+                return;
+            }
+
+            // OTHERWISE (Legacy/Direct mode), save to DB immediately
+            if(!this.cardForImage) return;
             this.cardForImage.image_url = this.selectedImageUrl;
-            // Immediate save
             await supabase.from("cards").update({ image_url: this.selectedImageUrl }).eq("id", this.cardForImage.id);
             this.exitImageSelector();
         },
+
         drawCharts() {
             // Optimized Chart Area to prevent label clipping
             const commonOpts = { 
