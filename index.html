@@ -469,6 +469,11 @@
             <div class="content-scroll">
                 
                 <div class="container-elevated">
+                    <div class="chart-heading">Retention Rate (% Correct)</div>
+                    <div id="retention-chart-div" class="chart-wrapper"></div>
+                </div>
+
+                <div class="container-elevated">
                     <div class="chart-heading">Mastery History</div>
                     <div id="mastery-history-chart" class="chart-wrapper"></div>
                 </div>
@@ -862,7 +867,42 @@ const app = createApp({
                 backgroundColor: 'transparent'
             };
 
-            // 1. Mastery Status
+            // 1. Retention Rate Chart (NEW)
+            const retMap = new Map();
+            // Iterate history, skipping 'new' cards (learning phase)
+            this.reviewHistory.forEach(h => {
+                if(h.review_type === 'new') return; 
+                const k = h.timestamp.slice(0, 10);
+                if(!retMap.has(k)) retMap.set(k, { pass: 0, fail: 0 });
+                const d = retMap.get(k);
+                if(h.rating === 'again') d.fail++;
+                else d.pass++;
+            });
+
+            const d4 = new google.visualization.DataTable();
+            d4.addColumn('date', 'Date');
+            d4.addColumn('number', 'Retention %');
+            
+            const retRows = [];
+            const sortedKeys = Array.from(retMap.keys()).sort();
+            sortedKeys.forEach(k => {
+                const d = retMap.get(k);
+                const total = d.pass + d.fail;
+                const rate = total ? (d.pass / total) * 100 : 0;
+                const [y, m, day] = k.split('-').map(Number);
+                retRows.push([new Date(y, m - 1, day), rate]);
+            });
+            d4.addRows(retRows);
+
+            new google.visualization.LineChart(document.getElementById('retention-chart-div')).draw(d4, {
+                ...commonOpts,
+                vAxis: { minValue: 0, maxValue: 100, format: '#\'%\'' }, 
+                colors: ['#2EC4B6'],
+                legend: { position: 'none' },
+                pointSize: 5
+            });
+
+            // 2. Mastery Status
             const stats = { new:0, learning:0, reviewing:0, mastered:0 };
             this.allCards.forEach(c => {
                 if(c.suspended) return;
@@ -876,7 +916,7 @@ const app = createApp({
                 { ...commonOpts, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'] }
             );
             
-            // 2. Activity (Day)
+            // 3. Activity (Day)
             const today = new Date(); const m = today.getMonth();
             const map = new Map();
             for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) map.set(d.toISOString().slice(0,10), {new:0, rev:0, d:new Date(d)});
@@ -894,7 +934,7 @@ const app = createApp({
                 bar:{groupWidth:'90%'}
             });
 
-            // 3. Mastery History
+            // 4. Mastery History
             const cardMap = new Map();
             this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:c.type, ivl:c.interval||0}); });
             const history = [...this.reviewHistory].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
