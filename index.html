@@ -755,6 +755,16 @@ const app = createApp({
                 c.lapses=(c.lapses||0)+1; 
                 c.interval=1; 
                 c.ease=Math.max(1.3, c.ease-0.2); 
+                
+                // --- LEECH PROTECTION LOGIC ---
+                // If lapses hit 7 or more, suggest suspension
+                if (c.lapses >= 7 && !c.suspended) {
+                     if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend (freeze) it?`)) {
+                         c.suspended = true;
+                         // Fire and forget update to ensure suspension persists immediately
+                         supabase.from("cards").update({ suspended: true }).eq("id", c.id).then();
+                     }
+                }
             }
             else {
                 let multiplier;
