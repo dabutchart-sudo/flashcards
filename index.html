@@ -690,9 +690,10 @@ const app = createApp({
             // Calculate Yesterday's Date
             const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-            // Filter history for YESTERDAY only, excluding 'new' learning phase events
+            // Filter history for YESTERDAY only
+            // REMOVED THE CHECK for r.review_type !== 'new' so that new card failures count towards retention
             const yReviews = this.reviewHistory.filter(r => 
-                r.timestamp.slice(0,10) === yesterday && r.review_type !== 'new'
+                r.timestamp.slice(0,10) === yesterday
             );
 
             // If no reviews yesterday, give benefit of doubt (don't block)
