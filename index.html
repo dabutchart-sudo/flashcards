@@ -585,15 +585,18 @@ const app = createApp({
             const today = new Date().toISOString().slice(0, 10);
             const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
             
-            // Use the Adjusted Limit (Check retention)
-            const maxNew = this.getAdjustedMaxNew();
+            // Limit for Today (based on YESTERDAY'S performance)
+            const maxNewToday = this.getAdjustedMaxNew(new Date(Date.now() - 86400000).toISOString().slice(0, 10));
+
+            // Limit for Tomorrow (based on TODAY'S performance)
+            const maxNewTomorrow = this.getAdjustedMaxNew(today);
 
             const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
             
             return {
-                dueNew: Math.max(0, maxNew - newDone),
+                dueNew: Math.max(0, maxNewToday - newDone),
                 dueReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) <= today).length,
-                tomorrowNew: maxNew,
+                tomorrowNew: maxNewTomorrow,
                 tomorrowReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) === tomorrow).length
             };
         },
@@ -680,28 +683,26 @@ const app = createApp({
             this.loading.show = false;
         },
         // --- HELPER FOR RETENTION LOGIC ---
-        getAdjustedMaxNew() {
+        // Accept a 'dateToCheck' argument (YYYY-MM-DD string)
+        getAdjustedMaxNew(dateToCheck) {
             const rawLimit = parseInt(this.settingsMaxNew || 10);
             const threshold = parseInt(this.settingsRetentionThreshold || 0);
 
             // If feature disabled (0), return normal limit
             if (threshold === 0) return rawLimit;
 
-            // Calculate Yesterday's Date
-            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-
-            // Filter history for YESTERDAY only
-            // REMOVED THE CHECK for r.review_type !== 'new' so that new card failures count towards retention
-            const yReviews = this.reviewHistory.filter(r => 
-                r.timestamp.slice(0,10) === yesterday
+            // Filter history for the SPECIFIC DATE
+            // Also removed the filter for r.review_type !== 'new' as per previous fix
+            const dayReviews = this.reviewHistory.filter(r => 
+                r.timestamp.slice(0,10) === dateToCheck
             );
 
-            // If no reviews yesterday, give benefit of doubt (don't block)
-            if (yReviews.length === 0) return rawLimit;
+            // If no reviews on that date, default to allowing new cards
+            if (dayReviews.length === 0) return rawLimit;
 
             // Calculate Pass Rate
-            const passed = yReviews.filter(r => r.rating !== 'again').length;
-            const rate = (passed / yReviews.length) * 100;
+            const passed = dayReviews.filter(r => r.rating !== 'again').length;
+            const rate = (passed / dayReviews.length) * 100;
 
             // If rate is strictly less than threshold, limit is 0
             if (rate < threshold) return 0;
@@ -711,8 +712,9 @@ const app = createApp({
         startSession() {
             const today = new Date().toISOString().slice(0, 10);
             
-            // Use adjusted max (checks retention)
-            const max = this.getAdjustedMaxNew();
+            // Use adjusted max (checks YESTERDAY for today's session)
+            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            const max = this.getAdjustedMaxNew(yesterday);
             
             const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
             const due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
