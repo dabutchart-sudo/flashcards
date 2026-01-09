@@ -522,26 +522,6 @@
                         <option value="90">90% Retention</option>
                     </select>
                 </div>
-
-                <div class="container-elevated" style="border: 2px solid red; background: #fff0f0;">
-                    <div class="header-title" style="position:static; transform:none; color:red; margin-bottom:10px;">Debug Info</div>
-                    <div style="font-family: monospace; font-size: 1.2rem; line-height: 1.5;">
-                        <div><b>App Date (UTC):</b> {{ debugInfo.today }}</div>
-                        <div><b>Yesterday (UTC):</b> {{ debugInfo.yesterday }}</div>
-                        <hr style="opacity:0.2; margin:5px 0;">
-                        <div><b>Setting Max New:</b> {{ debugInfo.settingMax }}</div>
-                        <div><b>Setting Threshold:</b> {{ debugInfo.settingThreshold }}%</div>
-                        <hr style="opacity:0.2; margin:5px 0;">
-                        <div><b>Reviews Fnd (Yest):</b> {{ debugInfo.yestCount }}</div>
-                        <div><b>Passes (Yest):</b> {{ debugInfo.yestPass }}</div>
-                        <div><b>Calc Retention:</b> {{ debugInfo.yestRate }}%</div>
-                        <div><b>Allowed Today:</b> {{ debugInfo.allowed }}</div>
-                        <hr style="opacity:0.2; margin:5px 0;">
-                        <div><b>Total 'New' in DB:</b> {{ debugInfo.totalNewInDb }}</div>
-                        <div><b>New Done Today:</b> {{ debugInfo.newDoneToday }}</div>
-                    </div>
-                </div>
-
             </div>
         </div>
 
@@ -644,32 +624,6 @@ const app = createApp({
                 return va > vb ? 1 : -1;
             });
             return list.slice(0, 100); 
-        },
-        debugInfo() {
-            const today = new Date().toISOString().slice(0, 10);
-            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-            
-            // Re-run the logic manually to inspect it
-            const yReviews = this.reviewHistory.filter(r => r.timestamp.slice(0,10) === yesterday);
-            const passed = yReviews.filter(r => r.rating !== 'again').length;
-            const rate = yReviews.length ? ((passed / yReviews.length) * 100).toFixed(1) : "N/A";
-            const allowed = this.getAdjustedMaxNew(yesterday);
-            
-            const newInDb = this.allCards.filter(c => c.type === 'new' && !c.suspended).length;
-            const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
-
-            return {
-                today: today,
-                yesterday: yesterday,
-                settingMax: this.settingsMaxNew,
-                settingThreshold: this.settingsRetentionThreshold,
-                yestCount: yReviews.length,
-                yestPass: passed,
-                yestRate: rate,
-                allowed: allowed,
-                totalNewInDb: newInDb,
-                newDoneToday: newDone
-            };
         }
     },
     async mounted() {
@@ -739,7 +693,6 @@ const app = createApp({
             if (threshold === 0) return rawLimit;
 
             // Filter history for the SPECIFIC DATE
-            // Also removed the filter for r.review_type !== 'new' so that new card failures count towards retention
             const dayReviews = this.reviewHistory.filter(r => 
                 r.timestamp.slice(0,10) === dateToCheck
             );
