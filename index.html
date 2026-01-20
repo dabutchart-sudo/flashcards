@@ -34,7 +34,6 @@
         }
 
         html { 
-            /* 62.5% means 1rem = 10px. This makes math easy and scaling consistent. */
             font-size: 62.5%; 
             height: 100dvh; 
             width: 100%; 
@@ -62,7 +61,6 @@
         /* Layout */
         #app-container { display: flex; flex-direction: column; position: relative; overflow: hidden; width: 100%; height: 100%; }
         
-        /* Tighter padding for mobile */
         .content-scroll { 
             flex: 1; 
             overflow-y: auto; 
@@ -90,9 +88,8 @@
         
         .fixed-controls { flex-shrink: 0; padding: 12px; background: var(--bg-app); z-index: 10; border-bottom: 1px solid rgba(0,0,0,0.05); }
 
-        /* Compact Header */
         .app-header { 
-            height: calc(50px + var(--safe-area-top)); /* Reduced from 100px */
+            height: calc(50px + var(--safe-area-top)); 
             padding-top: var(--safe-area-top); 
             background: var(--bg-card); 
             display: flex; 
@@ -107,7 +104,7 @@
         
         .header-title { 
             font-weight: 700; 
-            font-size: 2.0rem; /* Drastically reduced from 5rem */
+            font-size: 2.0rem; 
             color: var(--text-main); 
             text-align: center; 
             position: absolute; left: 50%; transform: translateX(-50%); width: 100%; 
@@ -118,14 +115,12 @@
         .btn-icon { background: none; border: none; font-size: 2.4rem; cursor: pointer; padding: 8px; z-index: 2; }
         .btn-text { background: none; border: none; font-size: 1.4rem; font-weight: 600; color: var(--primary); cursor: pointer; z-index: 2; }
 
-        /* Components */
         .container-elevated { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 12px; padding: 16px; }
         
-        /* --- COMPACT PROGRESS WIDGET --- */
         .progress-widget { 
             background: #F8F9FA; 
             border-radius: var(--radius-md); 
-            padding: 16px 10px; /* Reduced vertical padding */
+            padding: 16px 10px; 
             margin-top: 10px; 
             width: 100%; 
         }
@@ -142,7 +137,6 @@
         .pw-val { font-size: 2.2rem; font-weight: 800; color: var(--primary); text-align: center; line-height: 1; }
         .pw-div-vert { width: 2px; height: 30px; background: #E9ECEF; margin: 0 auto; border-radius: 2px; }
 
-        /* Compact Menu */
         .menu-grid { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
@@ -161,14 +155,12 @@
             gap: 10px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.04); 
             cursor: pointer; 
-            /* Removed fixed aspect ratio to allow shrinking */
             min-height: 130px; 
             width: 100%; 
         }
-        .menu-icon { font-size: 5rem; line-height: 1; } /* Reduced from 15rem to 5rem */
+        .menu-icon { font-size: 5rem; line-height: 1; }
         .menu-text { font-weight: 700; font-size: 1.6rem; color: var(--text-main); }
 
-        /* Flashcard Stage */
         .flashcard-stage { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 16px; perspective: 1000px; padding-bottom: 120px; }
         
         .progress-track { width: 100%; max-width: 600px; height: 30px; background: #e0e0e0; border-radius: 15px; margin-bottom: 16px; overflow: hidden; position: relative; }
@@ -179,7 +171,6 @@
         .flashcard.flipped { transform: rotateY(180deg); }
         .flashcard.no-transition { transition: none !important; }
         
-        /* Face Logic */
         .face { 
             position: absolute; width: 100%; height: 100%; backface-visibility: hidden; 
             border-radius: 20px; background: var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
@@ -201,20 +192,16 @@
         .word-text { font-size: 3.2rem; font-weight: 700; text-align: center; word-break: break-word; line-height: 1.2; }
         .hint-image { max-width: 100%; max-height: 200px; border-radius: 12px; object-fit: contain; background: #f8f8f8; }
 
-        /* Interaction Buttons */
         .tts-btn { position: absolute; bottom: 15px; left: 15px !important; right: auto !important; background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .hint-btn { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .edit-card-btn { position: absolute; bottom: 15px; right: 15px; background: #eee; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; font-size: 1.3rem; cursor: pointer; z-index: 10; }
 
-        /* Rating Controls */
         .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px; padding-bottom: calc(20px + var(--safe-area-bottom)); background: rgba(255,255,255,0.95); border-top: 1px solid #eee; display: flex; gap: 10px; z-index: 100; }
         .rating-btn { flex: 1; border: none; padding: 25px 0; border-radius: 12px; font-weight: 700; color: white; font-size: 1.6rem; cursor: pointer; }
         
-        /* Dictionary */
         .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
         .search-input { flex:1; padding: 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 1.6rem; }
         
-        /* Dictionary Specific Overrides */
         #screen-wordReview .search-input { font-size: 1.8rem; margin-bottom: 8px; }
         #screen-wordReview .filter-pill { font-size: 1.3rem; padding: 6px 14px; }
         
@@ -225,7 +212,6 @@
         .ri-text { font-size: 1.8rem; font-weight: 700; }
         .ri-sub { font-size: 1.4rem; color: #777; }
 
-        /* Edit Card Screen Styles */
         .edit-label { font-size: 1.4rem; font-weight: 700; color: var(--text-sub); margin-bottom: 5px; display: block; margin-top: 15px; }
         .edit-input { width: 100%; padding: 16px; font-size: 1.8rem; border: 1px solid #ddd; border-radius: 12px; font-weight: 600; background: #fff; }
         .edit-preview-img { width: 100%; height: 200px; object-fit: contain; background: #eee; border-radius: 12px; margin-top: 8px; margin-bottom: 8px; border: 1px solid #ddd; }
@@ -233,7 +219,6 @@
         .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 10px; }
         .btn-danger { background: var(--color-again); margin-top: 10px; }
 
-        /* Image Search Grid */
         .image-grid { 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -244,20 +229,8 @@
         .image-item.selected { border-color: var(--primary); }
         .image-item img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Chart Styles */
-        .chart-heading {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 5px;
-            text-align: left;
-            position: relative; 
-        }
-        .chart-wrapper {
-            width: 100%;
-            height: 250px;
-            overflow: hidden;
-        }
+        .chart-heading { font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px; text-align: left; position: relative; }
+        .chart-wrapper { width: 100%; height: 250px; overflow: hidden; }
 
         .hidden { display: none !important; }
         .center-msg { text-align: center; color: black; margin-top: 20px; font-size: 2rem; }
@@ -529,12 +502,9 @@
 </div>
 
 <script type="module">
-// --- IMPORTS ---
 import { APP_VERSION, SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW } from './constants.js';
 
-// New Constant for Retention
 const CONFIG_RET_THRESHOLD = 'dutch_flashcards_ret_threshold';
-
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -544,12 +514,9 @@ const app = createApp({
             appVersion: APP_VERSION,
             currentScreen: 'menu',
             loading: { show: true, msg: 'Starting...' },
-            
             allCards: [],
             reviewHistory: [],
             reviewBuffer: [],
-            
-            // Session
             sessionQueue: [],
             sessionTotal: 0,
             currentIndex: 0,
@@ -557,26 +524,20 @@ const app = createApp({
             disableTransition: false,
             sessionStarted: false,
             showHint: false, 
-            
-            // Edit Card State
             editForm: { id: null, dutch: '', english: '', image_url: '' },
             editReturnScreen: 'menu',
             cardToEdit: null,
-            
-            // Image Search
             imgSearchQuery: '',
             imgResults: [],
             imgLoading: false,
             selectedImageUrl: null,
             imageReturnScreen: 'learn',
             cardForImage: null,
-
-            // Dictionary
             wordSearch: '',
             wordFilter: 'all',
             sortCol: 'dutch',
             settingsMaxNew: '10',
-            settingsRetentionThreshold: '0' // Default to 0 (Disabled)
+            settingsRetentionThreshold: '0'
         };
     },
     computed: {
@@ -584,14 +545,9 @@ const app = createApp({
             if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
             const today = new Date().toISOString().slice(0, 10);
             const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-            
-            // Limit for Today (based on YESTERDAY'S performance)
             const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
             const maxNewToday = this.getAdjustedMaxNew(yesterday);
-
-            // Limit for Tomorrow (based on TODAY'S performance)
             const maxNewTomorrow = this.getAdjustedMaxNew(today);
-
             const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
             
             return {
@@ -618,7 +574,6 @@ const app = createApp({
                 if(this.wordFilter === 'due') return (c.type !== 'new' && c.due_date && c.due_date.slice(0,10) <= today);
                 return true;
             });
-            // Sort
             list.sort((a,b) => {
                 const va = a[this.sortCol] || ""; const vb = b[this.sortCol] || "";
                 return va > vb ? 1 : -1;
@@ -644,7 +599,6 @@ const app = createApp({
 
             if(window.google) google.charts.load('current', {'packages':['corechart']});
             
-            // Add resize listener for charts
             window.addEventListener('resize', () => {
                 if(this.currentScreen === 'report') this.drawCharts();
             });
@@ -683,47 +637,36 @@ const app = createApp({
             localStorage.setItem(CONFIG_RET_THRESHOLD, this.settingsRetentionThreshold);
             this.loading.show = false;
         },
-        // --- HELPER FOR RETENTION LOGIC ---
-        // Accept a 'dateToCheck' argument (YYYY-MM-DD string)
         getAdjustedMaxNew(dateToCheck) {
             const rawLimit = parseInt(this.settingsMaxNew || 10);
             const threshold = parseInt(this.settingsRetentionThreshold || 0);
-
-            // If feature disabled (0), return normal limit
             if (threshold === 0) return rawLimit;
-
-            // Filter history for the SPECIFIC DATE
-            const dayReviews = this.reviewHistory.filter(r => 
-                r.timestamp.slice(0,10) === dateToCheck
-            );
-
-            // If no reviews on that date, default to allowing new cards
+            const dayReviews = this.reviewHistory.filter(r => r.timestamp.slice(0,10) === dateToCheck);
             if (dayReviews.length === 0) return rawLimit;
-
-            // Calculate Pass Rate
             const passed = dayReviews.filter(r => r.rating !== 'again').length;
             const rate = (passed / dayReviews.length) * 100;
-
-            // If rate is strictly less than threshold, limit is 0
             if (rate < threshold) return 0;
-
             return rawLimit;
         },
         startSession() {
             const today = new Date().toISOString().slice(0, 10);
-            
-            // Use adjusted max (checks YESTERDAY for today's session)
             const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
             const max = this.getAdjustedMaxNew(yesterday);
-            
             const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
-            const due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
-            let n = this.allCards.filter(c => !c.suspended && c.type==="new");
-            n.sort(() => Math.random() - 0.5);
-            const limit = Math.max(0, max - done);
             
-            // Combined shuffle
-            let combined = [...due, ...n.slice(0, limit)];
+            // 1. Get Due Review Cards (Shuffle them randomly)
+            let due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
+            due.sort(() => Math.random() - 0.5);
+
+            // 2. Get New Cards (Sort them by ID order)
+            let n = this.allCards.filter(c => !c.suspended && c.type==="new");
+            n.sort((a, b) => a.id - b.id); 
+            
+            const limit = Math.max(0, max - done);
+            const newCardsForSession = n.slice(0, limit);
+            
+            // 3. Combine and shuffle entire queue so New/Review are mixed
+            let combined = [...due, ...newCardsForSession];
             combined.sort(() => Math.random() - 0.5);
             
             this.sessionQueue = combined;
@@ -746,7 +689,6 @@ const app = createApp({
             const type = c.type;
             c.reps = (c.reps||0)+1;
             
-            // Transition New -> Review
             if(c.type === "new") { 
                 c.type="review"; 
                 c.interval=1; 
@@ -758,13 +700,9 @@ const app = createApp({
                 c.lapses=(c.lapses||0)+1; 
                 c.interval=1; 
                 c.ease=Math.max(1.3, c.ease-0.2); 
-                
-                // --- LEECH PROTECTION LOGIC ---
-                // If lapses hit 7 or more, suggest suspension
                 if (c.lapses >= 7 && !c.suspended) {
-                     if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend (freeze) it?`)) {
+                     if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend it?`)) {
                          c.suspended = true;
-                         // Fire and forget update to ensure suspension persists immediately
                          supabase.from("cards").update({ suspended: true }).eq("id", c.id).then();
                      }
                 }
@@ -772,29 +710,12 @@ const app = createApp({
             else {
                 let multiplier;
                 let easeChange = 0;
+                if(rating==="hard") { multiplier = 1.2; easeChange = -0.15; }
+                else if(rating==="good") { multiplier = c.ease; easeChange = 0; }
+                else if(rating==="easy") { multiplier = c.ease + 0.15; easeChange = 0.15; }
 
-                if(rating==="hard") { 
-                    multiplier = 1.2;
-                    easeChange = -0.15;
-                }
-                else if(rating==="good") { 
-                    multiplier = c.ease;
-                    easeChange = 0;
-                }
-                else if(rating==="easy") { 
-                    multiplier = c.ease + 0.15;
-                    easeChange = 0.15;
-                }
-
-                // Calculate next interval based on multiplier
                 let nextInterval = Math.round(c.interval * multiplier);
-                
-                // --- FIX: Prevent Rounding Traps ---
-                // If the interval didn't grow (due to rounding on low Ease/Interval), force it to +1
-                if (nextInterval <= c.interval) {
-                    nextInterval = c.interval + 1;
-                }
-                
+                if (nextInterval <= c.interval) nextInterval = c.interval + 1;
                 c.interval = nextInterval;
                 c.ease = Math.max(1.3, c.ease + easeChange);
             }
@@ -809,7 +730,6 @@ const app = createApp({
         },
         speakTTS() {
             if(!this.currentCard || this.isFlipped) return;
-            // Strip text in brackets like "aardig (adj)" -> "aardig"
             const textToSpeak = this.currentCard.dutch.replace(/\s*\(.*?\)/g, "").trim();
             const u = new SpeechSynthesisUtterance(textToSpeak);
             u.lang = "nl-NL";
@@ -819,90 +739,42 @@ const app = createApp({
             card.suspended = !card.suspended;
             await supabase.from("cards").update({ suspended: card.suspended }).eq("id", card.id);
         },
-        
-        // --- EDIT CARD LOGIC ---
         startEditCard(card, fromScreen) {
             this.cardToEdit = card;
             this.editReturnScreen = fromScreen;
-            this.editForm = {
-                id: card.id,
-                dutch: card.dutch,
-                english: card.english,
-                image_url: card.image_url
-            };
+            this.editForm = { id: card.id, dutch: card.dutch, english: card.english, image_url: card.image_url };
             this.currentScreen = 'editCard';
         },
         async saveEditCard() {
             if(!this.cardToEdit) return;
             this.loading = { show: true, msg: "Saving..." };
             const { error } = await supabase.from("cards").update({
-                dutch: this.editForm.dutch,
-                english: this.editForm.english,
-                image_url: this.editForm.image_url
+                dutch: this.editForm.dutch, english: this.editForm.english, image_url: this.editForm.image_url
             }).eq("id", this.editForm.id);
-
-            if (error) {
-                alert("Error saving: " + error.message);
-                this.loading.show = false;
-                return;
-            }
-
+            if (error) { alert("Error: " + error.message); this.loading.show = false; return; }
             this.cardToEdit.dutch = this.editForm.dutch;
             this.cardToEdit.english = this.editForm.english;
             this.cardToEdit.image_url = this.editForm.image_url;
-
             this.loading.show = false;
             this.currentScreen = this.editReturnScreen;
         },
         async deleteCard() {
-            if(!this.cardToEdit) return;
-            
-            if(!confirm("Are you sure you want to permanently delete this card? This cannot be undone.")) {
-                return;
-            }
-
+            if(!this.cardToEdit || !confirm("Delete permanently?")) return;
             this.loading = { show: true, msg: "Deleting..." };
-            
             const { error } = await supabase.from("cards").delete().eq("id", this.cardToEdit.id);
-
-            if (error) {
-                alert("Error deleting: " + error.message);
-                this.loading.show = false;
-                return;
-            }
-            
-            // Remove from local list
+            if (error) { alert("Error: " + error.message); this.loading.show = false; return; }
             this.allCards = this.allCards.filter(c => c.id !== this.cardToEdit.id);
-            
-            // If we were in a session, remove it from session queue if it exists there
             this.sessionQueue = this.sessionQueue.filter(c => c.id !== this.cardToEdit.id);
-            if(this.sessionQueue.length === 0) {
-                 this.sessionTotal = 0; 
-                 this.sessionStarted = false;
-            }
-
+            if(this.sessionQueue.length === 0) { this.sessionTotal = 0; this.sessionStarted = false; }
             this.loading.show = false;
-            // Return to dictionary primarily, or menu if that's safer
             this.currentScreen = 'wordReview';
         },
-        cancelEdit() {
-            this.currentScreen = this.editReturnScreen;
-        },
-
-        // --- IMAGE SELECTION ---
+        cancelEdit() { this.currentScreen = this.editReturnScreen; },
         openImageSelector(fromScreen, cardOverride=null) {
             this.imageReturnScreen = fromScreen;
-            if (fromScreen === 'editCard') {
-                this.imgSearchQuery = this.editForm.english;
-                this.cardForImage = null; 
-            } else {
-                this.cardForImage = cardOverride || this.currentCard;
-                this.imgSearchQuery = this.cardForImage.english;
-            }
-            this.imgResults = [];
-            this.selectedImageUrl = null;
-            this.currentScreen = 'selectImage';
-            this.searchImages();
+            if (fromScreen === 'editCard') { this.imgSearchQuery = this.editForm.english; this.cardForImage = null; } 
+            else { this.cardForImage = cardOverride || this.currentCard; this.imgSearchQuery = this.cardForImage.english; }
+            this.imgResults = []; this.selectedImageUrl = null; this.currentScreen = 'selectImage'; this.searchImages();
         },
         exitImageSelector() { this.currentScreen = this.imageReturnScreen; },
         async searchImages() {
@@ -917,123 +789,37 @@ const app = createApp({
         },
         async saveSelectedImage() {
             if(!this.selectedImageUrl) return;
-            if (this.imageReturnScreen === 'editCard') {
-                this.editForm.image_url = this.selectedImageUrl;
-                this.exitImageSelector();
-                return;
-            }
+            if (this.imageReturnScreen === 'editCard') { this.editForm.image_url = this.selectedImageUrl; this.exitImageSelector(); return; }
             if(!this.cardForImage) return;
             this.cardForImage.image_url = this.selectedImageUrl;
             await supabase.from("cards").update({ image_url: this.selectedImageUrl }).eq("id", this.cardForImage.id);
             this.exitImageSelector();
         },
-
         drawCharts() {
-            const commonOpts = { 
-                chartArea: { width: '85%', height: '70%', top: 20 }, 
-                legend: { position: 'bottom' },
-                backgroundColor: 'transparent'
-            };
-
-            // 1. Retention Rate Chart (NEW)
+            const commonOpts = { chartArea: { width: '85%', height: '70%', top: 20 }, legend: { position: 'bottom' }, backgroundColor: 'transparent' };
             const retMap = new Map();
-            // Iterate history, skipping 'new' cards (learning phase)
             this.reviewHistory.forEach(h => {
                 if(h.review_type === 'new') return; 
                 const k = h.timestamp.slice(0, 10);
                 if(!retMap.has(k)) retMap.set(k, { pass: 0, fail: 0 });
                 const d = retMap.get(k);
-                if(h.rating === 'again') d.fail++;
-                else d.pass++;
+                if(h.rating === 'again') d.fail++; else d.pass++;
             });
-
             const d4 = new google.visualization.DataTable();
-            d4.addColumn('date', 'Date');
-            d4.addColumn('number', 'Retention %');
-            
-            const retRows = [];
+            d4.addColumn('date', 'Date'); d4.addColumn('number', 'Retention %');
             const sortedKeys = Array.from(retMap.keys()).sort();
             sortedKeys.forEach(k => {
                 const d = retMap.get(k);
-                const total = d.pass + d.fail;
-                const rate = total ? (d.pass / total) * 100 : 0;
                 const [y, m, day] = k.split('-').map(Number);
-                retRows.push([new Date(y, m - 1, day), rate]);
+                d4.addRow([new Date(y, m - 1, day), (d.pass / (d.pass + d.fail)) * 100]);
             });
-            d4.addRows(retRows);
-
-            new google.visualization.LineChart(document.getElementById('retention-chart-div')).draw(d4, {
-                ...commonOpts,
-                vAxis: { minValue: 0, maxValue: 100, format: '#\'%\'' }, 
-                colors: ['#2EC4B6'],
-                legend: { position: 'none' },
-                pointSize: 5
-            });
-
-            // 2. Mastery Status
-            const stats = { new:0, learning:0, reviewing:0, mastered:0 };
+            new google.visualization.LineChart(document.getElementById('retention-chart-div')).draw(d4, { ...commonOpts, vAxis: { minValue: 0, maxValue: 100 }, colors: ['#2EC4B6'], pointSize: 5 });
+            const mst = { new:0, learning:0, reviewing:0, mastered:0 };
             this.allCards.forEach(c => {
                 if(c.suspended) return;
-                if(c.type==='new') stats.new++;
-                else if(c.interval <= 3) stats.learning++;
-                else if(c.interval <= 21) stats.reviewing++;
-                else stats.mastered++;
+                if(c.type==='new') mst.new++; else if(c.interval <= 3) mst.learning++; else if(c.interval <= 21) mst.reviewing++; else mst.mastered++;
             });
-            new google.visualization.PieChart(document.getElementById('status-chart-div')).draw(
-                google.visualization.arrayToDataTable([['S','C'],['New',stats.new],['Lrn',stats.learning],['Rev',stats.reviewing],['Mst',stats.mastered]]),
-                { ...commonOpts, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'] }
-            );
-            
-            // 3. Activity (Day)
-            const today = new Date(); const m = today.getMonth();
-            const map = new Map();
-            for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) map.set(d.toISOString().slice(0,10), {new:0, rev:0, d:new Date(d)});
-            this.reviewHistory.forEach(h => {
-                const k = h.timestamp.slice(0,10);
-                if(map.has(k)) h.review_type==='new' ? map.get(k).new++ : map.get(k).rev++;
-            });
-            const d2 = new google.visualization.DataTable();
-            d2.addColumn('date','Date'); d2.addColumn('number','New'); d2.addColumn('number','Rev');
-            for(const v of map.values()) d2.addRow([v.d, v.new, v.rev]);
-            new google.visualization.ColumnChart(document.getElementById('chart-div')).draw(d2, {
-                ...commonOpts, 
-                isStacked:true, 
-                colors:['#FF9F1C','#1a80d9'], 
-                bar:{groupWidth:'90%'}
-            });
-
-            // 4. Mastery History
-            const cardMap = new Map();
-            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:c.type, ivl:c.interval||0}); });
-            const history = [...this.reviewHistory].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
-            const dailyStats = [];
-            let curDate = history[0]?.timestamp.slice(0,10) || today.toISOString().slice(0,10);
-            const todayStr = today.toISOString().slice(0,10);
-            let idx = 0;
-            
-            while(curDate <= todayStr) {
-                while(idx < history.length && history[idx].timestamp.slice(0,10) <= curDate) idx++;
-                let s = {n:0, l:0, r:0, m:0};
-                for(const st of cardMap.values()) {
-                    if(st.status==='new') s.n++;
-                    else if(st.ivl<=3) s.l++;
-                    else if(st.ivl<=21) s.r++;
-                    else s.m++;
-                }
-                const [y, mm, dd] = curDate.split('-').map(Number);
-                dailyStats.push([new Date(y, mm-1, dd), s.n, s.l, s.r, s.m]);
-                const nextD = new Date(y, mm-1, dd); nextD.setDate(nextD.getDate()+1);
-                curDate = nextD.toISOString().slice(0,10);
-            }
-            const d3 = new google.visualization.DataTable();
-            d3.addColumn('date','Date'); d3.addColumn('number','New'); d3.addColumn('number','Lrn'); d3.addColumn('number','Rev'); d3.addColumn('number','Mst');
-            d3.addRows(dailyStats);
-            new google.visualization.AreaChart(document.getElementById('mastery-history-chart')).draw(d3, {
-                ...commonOpts, 
-                isStacked:true, 
-                colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], 
-                areaOpacity:0.9
-            });
+            new google.visualization.PieChart(document.getElementById('status-chart-div')).draw(google.visualization.arrayToDataTable([['S','C'],['New',mst.new],['Lrn',mst.learning],['Rev',mst.reviewing],['Mst',mst.mastered]]), { ...commonOpts, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'] });
         }
     }
 });
