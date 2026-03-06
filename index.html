@@ -766,70 +766,105 @@ const app = createApp({
             this.$nextTick(() => setTimeout(() => this.disableTransition=false, 50));
         },
         flipCard() { this.isFlipped = !this.isFlipped; },
-        async rate(rating) {
+async rate(rating) {
             if(!this.currentCard) return;
             const c = this.currentCard;
             const now = new Date().toISOString();
-            const type = c.type;
-            c.reps = (c.reps||0)+1;
+            const wasNew = c.type === "new";
             
-            // Transition New -> Review
-            if(c.type === "new") { 
-                c.type="review"; 
-                c.interval=1; 
-                c.ease=2.5; 
-                c.first_seen=now.slice(0,10); 
-            }
-
-            if(rating==="again") { 
-                c.lapses=(c.lapses||0)+1; 
-                c.interval=1; 
-                c.ease=Math.max(1.3, c.ease-0.2); 
+            c.reps = (c.reps || 0) + 1;
+            
+            // --- NEW CARD LOGIC ---
+            if (wasNew) { 
+                c.type = "review"; 
+                c.first_seen = now.slice(0, 10); 
                 
-                // --- LEECH PROTECTION LOGIC ---
-                // If lapses hit 7 or more, suggest suspension
-                if (c.lapses >= 7 && !c.suspended) {
-                      if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend (freeze) it?`)) {
-                          c.suspended = true;
-                          // Fire and forget update to ensure suspension persists immediately
-                          supabase.from("cards").update({ suspended: true }).eq("id", c.id).then();
-                      }
+                // Hardcoded initial steps to avoid rounding collisions and unfair ease penalties
+                if (rating === "again" || rating === "hard") {
+                    c.interval = 1;
+                    c.ease = 2.5; 
+                    // Notice: no lapses incremented, no ease penalty for learning phase
+                } else if (rating === "good") {
+                    c.interval = 1;
+                    c.ease = 2.5;
+                } else if (rating === "easy") {
+                    c.interval = 4;
+                    c.ease = 2.65;
                 }
-            }
+            } 
+            // --- REVIEW CARD LOGIC ---
             else {
-                let multiplier;
-                let easeChange = 0;
+                if(rating === "again") { 
+                    c.lapses = (c.lapses || 0) + 1; 
+                    
+                    // Retain 20% of the previous interval instead of a full reset to 1
+                    c.interval = Math.max(1, Math.round(c.interval * 0.20)); 
+                    c.ease = Math.max(1.3, c.ease - 0.2); 
+                    
+                    // --- LEECH PROTECTION LOGIC ---
+                    if (c.lapses >= 7 && !c.suspended) {
+                          if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend (freeze) it?`)) {
+                              c.suspended = true;
+                              supabase.from("cards").update({ suspended: true }).eq("id", c.id).then();
+                          }
+                    }
+                }
+                else {
+                    let multiplier;
+                    let easeChange = 0;
+                    let isHard = false;
 
-                if(rating==="hard") { 
-                    multiplier = 1.2;
-                    easeChange = -0.15;
-                }
-                else if(rating==="good") { 
-                    multiplier = c.ease;
-                    easeChange = 0;
-                }
-                else if(rating==="easy") { 
-                    multiplier = c.ease + 0.15;
-                    easeChange = 0.15;
-                }
+                    if(rating === "hard") { 
+                        multiplier = 1.2;
+                        easeChange = -0.15;
+                        isHard = true;
+                    }
+                    else if(rating === "good") { 
+                        // Added a 5% interval bonus to prevent cards from stagnating at 1.3 ease
+                        multiplier = c.ease * 1.05;
+                        easeChange = 0;
+                    }
+                    else if(rating === "easy") { 
+                        multiplier = (c.ease + 0.15) * 1.15;
+                        easeChange = 0.15;
+                    }
 
-                // Calculate next interval based on multiplier
-                let nextInterval = Math.round(c.interval * multiplier);
-                
-                // --- FIX: Prevent Rounding Traps ---
-                // If the interval didn't grow (due to rounding on low Ease/Interval), force it to +1
-                if (nextInterval <= c.interval) {
-                    nextInterval = c.interval + 1;
+                    let nextInterval = Math.round(c.interval * multiplier);
+                    
+                    // --- FIX: Conditional Safety Net ---
+                    if (nextInterval <= c.interval) {
+                        if (isHard) {
+                            // Hard should never artificially increase the interval if math dictates otherwise
+                            nextInterval = c.interval; 
+                        } else {
+                            // Good and Easy must always advance the schedule by at least 1 day
+                            nextInterval = c.interval + 1;
+                        }
+                    }
+                    
+                    c.interval = nextInterval;
+                    c.ease = Math.max(1.3, c.ease + easeChange);
                 }
-                
-                c.interval = nextInterval;
-                c.ease = Math.max(1.3, c.ease + easeChange);
             }
             
-            const due = new Date(); due.setDate(due.getDate()+c.interval);
-            c.due_date = due.toISOString(); c.last_reviewed = now.slice(0,10);
+            // Calculate Due Date
+            const due = new Date(); 
+            due.setDate(due.getDate() + c.interval);
+            c.due_date = due.toISOString(); 
+            c.last_reviewed = now.slice(0, 10);
             
-            this.reviewBuffer.push({ cardid:c.id, rating, timestamp:now, reps:c.reps, lapses:c.lapses, interval:c.interval, ease:c.ease, review_type:type });
+            // Save to buffer
+            this.reviewBuffer.push({ 
+                cardid: c.id, 
+                rating, 
+                timestamp: now, 
+                reps: c.reps, 
+                lapses: c.lapses, 
+                interval: c.interval, 
+                ease: c.ease, 
+                review_type: wasNew ? "new" : "review" 
+            });
+            
             this.sessionQueue.splice(this.currentIndex, 1);
             if(this.reviewBuffer.length >= 5) this.saveProgress();
             this.resetCard();
