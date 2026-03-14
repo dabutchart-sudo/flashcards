@@ -1,18 +1,1123 @@
-// ==========================
-// CONFIGURATION CONSTANTS
-// ==========================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Dutch Flashcards</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FF9F1C">
+    <link rel="icon" href="/flashcards/favicon.ico"> 
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-// App Version
-export const APP_VERSION = "2.0";
+    <style>
+        /* --- STYLING (Compact Mobile Fix) --- */
+        :root {
+            --primary: #FF9F1C; --primary-dark: #e08000; --secondary: #2EC4B6;
+            --bg-app: #F4F6F8; --bg-card: #FFFFFF; --text-main: #1A1A1A; --text-sub: #788591;
+            --color-again: #FF595E; --color-hard: #FFCA3A; --color-good: #8AC926; --color-easy: #1982C4;
+            --radius-lg: 20px; --radius-md: 12px;
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 20px);
+        }
 
-// Your Supabase Project URL
-export const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
+        /* --- NEW: SENTENCE STYLING --- */
+        .sentence-text {
+            margin-top: 15px;
+            font-size: 1.6rem;
+            color: #555;
+            font-style: italic;
+            text-align: center;
+            max-width: 90%;
+            line-height: 1.4;
+            padding: 0 10px;
+        }
 
-// Public Anonymous Supabase Key
-export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRudGl0bHJ0dmtnaXN4d3FqeGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxOTQ0MzEsImV4cCI6MjA3OTc3MDQzMX0.S9CXEsHoqp9ATaX23nLI77Q78SvVUSp9V30U-MNcm90";
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            -webkit-text-size-adjust: 100%; 
+        }
 
-// Unsplash Access Key (Client-side is OK for this project)
-export const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM";
+        html { 
+            /* 62.5% means 1rem = 10px. This makes math easy and scaling consistent. */
+            font-size: 62.5%; 
+            height: 100dvh; 
+            width: 100%; 
+            overflow: hidden; 
+        }
 
-// Daily max new card config key
-export const CONFIG_MAX_NEW = "dfc_max_new";
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-app); 
+            color: var(--text-main); 
+            height: 100%; 
+            width: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            overscroll-behavior-y: none;
+            min-height: -webkit-fill-available;
+        }
+
+        /* Screen Visibility */
+        .screen { display: none; width: 100%; height: 100dvh; flex-direction: column; background: var(--bg-app); overflow: hidden; }
+        .screen.active { display: flex; }
+
+        /* Layout */
+        #app-container { display: flex; flex-direction: column; position: relative; overflow: hidden; width: 100%; height: 100%; }
+        
+        /* Tighter padding for mobile */
+        .content-scroll { 
+            flex: 1; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 12px; 
+            padding-bottom: calc(40px + var(--safe-area-bottom)); 
+            display: flex; 
+            flex-direction: column; 
+            -webkit-overflow-scrolling: touch;
+            min-height: 0; 
+            overscroll-behavior-y: contain; 
+        }
+        
+        .list-scroll { 
+            flex: 1; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            padding: 12px; 
+            padding-top: 0; 
+            padding-bottom: calc(40px + var(--safe-area-bottom)); 
+            min-height: 0; 
+            -webkit-overflow-scrolling: touch; 
+            overscroll-behavior-y: contain;
+        }
+        
+        .fixed-controls { flex-shrink: 0; padding: 12px; background: var(--bg-app); z-index: 10; border-bottom: 1px solid rgba(0,0,0,0.05); }
+
+        /* Compact Header */
+        .app-header { 
+            height: calc(50px + var(--safe-area-top)); /* Reduced from 100px */
+            padding-top: var(--safe-area-top); 
+            background: var(--bg-card); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding-left: 12px; 
+            padding-right: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            z-index: 50; 
+            flex-shrink: 0; 
+        }
+        
+        .header-title { 
+            font-weight: 700; 
+            font-size: 2.0rem; /* Drastically reduced from 5rem */
+            color: var(--text-main); 
+            text-align: center; 
+            position: absolute; left: 50%; transform: translateX(-50%); width: 100%; 
+            pointer-events: none; 
+            white-space: nowrap; 
+        }
+        
+        .btn-icon { background: none; border: none; font-size: 2.4rem; cursor: pointer; padding: 8px; z-index: 2; }
+        .btn-text { background: none; border: none; font-size: 1.4rem; font-weight: 600; color: var(--primary); cursor: pointer; z-index: 2; }
+
+        /* Components */
+        .container-elevated { background: var(--bg-card); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 12px; padding: 16px; }
+        
+        /* --- COMPACT PROGRESS WIDGET --- */
+        .progress-widget { 
+            background: #F8F9FA; 
+            border-radius: var(--radius-md); 
+            padding: 16px 10px; /* Reduced vertical padding */
+            margin-top: 10px; 
+            width: 100%; 
+        }
+        .pw-grid { 
+            display: grid; 
+            grid-template-columns: max-content 1fr 10px 1fr; 
+            align-items: center; 
+            row-gap: 5px; 
+            column-gap: 5px;
+            width: 100%;
+        }
+        .pw-head { font-size: 1.4rem; font-weight: 700; color: #ADB5BD; text-align: center; line-height: 1; }
+        .pw-label { font-size: 1.4rem; font-weight: 600; color: var(--text-sub); text-align: right; padding-right: 15px; white-space: nowrap; }
+        .pw-val { font-size: 2.2rem; font-weight: 800; color: var(--primary); text-align: center; line-height: 1; }
+        .pw-div-vert { width: 2px; height: 30px; background: #E9ECEF; margin: 0 auto; border-radius: 2px; }
+
+        /* Compact Menu */
+        .menu-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+            margin-top: 5px; 
+        }
+        .menu-btn { 
+            background: var(--bg-card); 
+            border: none; 
+            border-radius: var(--radius-lg); 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04); 
+            cursor: pointer; 
+            /* Removed fixed aspect ratio to allow shrinking */
+            min-height: 130px; 
+            width: 100%; 
+        }
+        .menu-icon { font-size: 5rem; line-height: 1; } /* Reduced from 15rem to 5rem */
+        .menu-text { font-weight: 700; font-size: 1.6rem; color: var(--text-main); }
+
+        /* Flashcard Stage */
+        .flashcard-stage { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 16px; perspective: 1000px; padding-bottom: 120px; }
+        
+        .progress-track { width: 100%; max-width: 600px; height: 30px; background: #e0e0e0; border-radius: 15px; margin-bottom: 16px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+        .progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; color: var(--text-main); }
+
+        .flashcard { width: 100%; max-width: 600px; aspect-ratio: 4/5; position: relative; transform-style: preserve-3d; transition: transform 0.6s; cursor: pointer; }
+        .flashcard.flipped { transform: rotateY(180deg); }
+        .flashcard.no-transition { transition: none !important; }
+        
+        /* Face Logic */
+        .face { 
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden; 
+            border-radius: 20px; background: var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+            display: flex; flex-direction: column; padding: 20px; border: 1px solid rgba(0,0,0,0.02);
+            pointer-events: none; 
+            transition: z-index 0s linear 0.3s; 
+        }
+        .face.back { transform: rotateY(180deg); }
+
+        .flashcard:not(.flipped) .face.front { pointer-events: auto; z-index: 10; }
+        .flashcard.flipped .face.back { pointer-events: auto; z-index: 10; }
+        .flashcard.flipped .face.front { z-index: 0; }
+        .flashcard:not(.flipped) .face.back { z-index: 0; }
+
+        .face-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .lang-flag { font-size: 3rem; }
+        .card-status { font-size: 1.2rem; font-weight: 700; padding: 4px 10px; background: #eee; border-radius: 100px; color: #666; }
+        .face-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; overflow:hidden; }
+        .word-text { font-size: 3.2rem; font-weight: 700; text-align: center; word-break: break-word; line-height: 1.2; }
+        .hint-image { max-width: 100%; max-height: 200px; border-radius: 12px; object-fit: contain; background: #f8f8f8; }
+
+        /* Interaction Buttons */
+        .tts-btn { position: absolute; bottom: 15px; left: 15px !important; right: auto !important; background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
+        .hint-btn { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
+        .edit-card-btn { position: absolute; bottom: 15px; right: 15px; background: #eee; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; font-size: 1.3rem; cursor: pointer; z-index: 10; }
+
+        /* Rating Controls */
+        .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px; padding-bottom: calc(20px + var(--safe-area-bottom)); background: rgba(255,255,255,0.95); border-top: 1px solid #eee; display: flex; gap: 10px; z-index: 100; }
+        .rating-btn { flex: 1; border: none; padding: 25px 0; border-radius: 12px; font-weight: 700; color: white; font-size: 1.6rem; cursor: pointer; }
+        
+        /* Dictionary */
+        .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        .search-input { flex:1; padding: 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 1.6rem; }
+        
+        /* Dictionary Specific Overrides */
+        #screen-wordReview .search-input { font-size: 1.8rem; margin-bottom: 8px; }
+        #screen-wordReview .filter-pill { font-size: 1.3rem; padding: 6px 14px; }
+        
+        .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 5px; }
+        .filter-pill { background: #eee; border: none; padding: 8px 16px; border-radius: 20px; font-size: 1.2rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .filter-pill.active { background: var(--text-main); color: white; }
+        
+        .ri-text { font-size: 1.8rem; font-weight: 700; }
+        .ri-sub { font-size: 1.4rem; color: #777; }
+
+        /* Edit Card Screen Styles */
+        .edit-label { font-size: 1.4rem; font-weight: 700; color: var(--text-sub); margin-bottom: 5px; display: block; margin-top: 15px; }
+        .edit-input { width: 100%; padding: 16px; font-size: 1.8rem; border: 1px solid #ddd; border-radius: 12px; font-weight: 600; background: #fff; }
+        .edit-preview-img { width: 100%; height: 200px; object-fit: contain; background: #eee; border-radius: 12px; margin-top: 8px; margin-bottom: 8px; border: 1px solid #ddd; }
+        .btn-large { width: 100%; padding: 16px; background: var(--primary); color: white; font-size: 1.6rem; font-weight: 700; border: none; border-radius: 12px; margin-top: 15px; cursor: pointer; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); margin-top: 10px; }
+        .btn-danger { background: var(--color-again); margin-top: 10px; }
+
+        /* Image Search Grid */
+        .image-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 8px; 
+            margin-top: 10px; 
+        }
+        .image-item { aspect-ratio: 1; border-radius: 8px; overflow: hidden; border: 3px solid transparent; cursor: pointer; }
+        .image-item.selected { border-color: var(--primary); }
+        .image-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Chart Styles */
+        .chart-heading {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 5px;
+            text-align: left;
+            position: relative; 
+        }
+        .chart-wrapper {
+            width: 100%;
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .hidden { display: none !important; }
+        .center-msg { text-align: center; color: black; margin-top: 20px; font-size: 2rem; }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #F4F6F8; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="loading-overlay" v-if="loading.show">
+        <div style="font-size: 5rem; font-weight: 800; margin-bottom: 20px;">🇳🇱 Dutch Cards</div>
+        <div style="font-size: 1.5rem; color: #666;">{{ loading.msg }}</div>
+        <div style="margin-top: 15px; color: #999;">v{{ appVersion }}</div>
+    </div>
+
+    <div id="app-container">
+        
+        <div id="screen-menu" class="screen" :class="{ active: !loading.show && currentScreen === 'menu' }">
+            <div class="app-header">
+                <div class="header-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated"> 
+                    <div class="header-title" style="font-size:2rem; text-align:center; margin-bottom:30px; position: relative; transform: none; left: auto; color:#788591;">Today's Progress</div>
+                    <div class="progress-widget">
+                        <div class="pw-grid">
+                            <div></div> <div class="pw-head">NEW</div> <div class="pw-div-vert"></div> <div class="pw-head">REVIEW</div>
+                            <div class="pw-label">Due Today</div>
+                            <div class="pw-val">{{ stats.dueNew }}</div> <div class="pw-div-vert"></div> <div class="pw-val">{{ stats.dueReview }}</div>
+                            <div class="pw-label">Due Tomorrow</div>
+                            <div class="pw-val">{{ stats.tomorrowNew }}</div> <div class="pw-div-vert"></div> <div class="pw-val">{{ stats.tomorrowReview }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-grid">
+                    <button class="menu-btn" @click="nav('learn')"><span class="menu-icon">🎓</span><span class="menu-text">Learn</span></button>
+                    <button class="menu-btn" @click="nav('wordReview')"><span class="menu-icon">📚</span><span class="menu-text">Dictionary</span></button>
+                    <button class="menu-btn" @click="nav('report')"><span class="menu-icon">📊</span><span class="menu-text">Report</span></button>
+                    <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
+                </div>
+                <div class="center-msg" style="font-size:1.2rem; margin-top:20px; color:#ccc;">Version {{ appVersion }}</div>
+            </div>
+        </div>
+
+        <div id="screen-learn" class="screen" :class="{ active: !loading.show && currentScreen === 'learn' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> <div class="header-title">Review</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+
+            <div class="flashcard-stage">
+                <div class="progress-track">
+                    <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+                    <div class="progress-text">{{ progressText }}</div>
+                </div>
+
+                <div v-if="currentCard" id="flashcard-el" class="flashcard" :class="{ flipped: isFlipped, 'no-transition': disableTransition }" @click="flipCard">
+                    <div class="face front">
+                        <div class="face-header">
+                            <span class="lang-flag">🇳🇱</span>
+                            <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                        </div>
+                        <div class="face-content">
+                            <img v-if="currentCard.image_url" :src="currentCard.image_url" class="hint-image" :class="{ hidden: !showHint }" />
+                            <div class="word-text">{{ currentCard.dutch }}</div>
+                            <div v-if="currentCard.dutch_sentence" class="sentence-text">{{ currentCard.dutch_sentence }}</div>
+                        </div>
+                        
+                        <button class="tts-btn" @click.stop="speakTTS">🔊</button>
+                        <button v-if="currentCard.image_url" class="hint-btn" @click.stop="showHint = !showHint">💡</button>
+                        <button class="edit-card-btn" @click.stop="startEditCard(currentCard, 'learn')">Edit</button>
+                    </div>
+
+                    <div class="face back">
+                        <div class="face-header">
+                            <span class="lang-flag">🇬🇧</span>
+                            <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                        </div>
+                        <div class="face-content">
+                            <div class="word-text" style="font-size:2.8rem;">{{ currentCard.english }}</div>
+                            <div v-if="currentCard.english_sentence" class="sentence-text">{{ currentCard.english_sentence }}</div>
+                        </div>
+                        <button class="edit-card-btn" @click.stop="startEditCard(currentCard, 'learn')">Edit</button>
+                    </div>
+                </div>
+                
+                <div v-if="!currentCard && sessionStarted" class="center-msg">
+                    <h2>🎉 All caught up!</h2>
+                    <p>No more cards due right now.</p>
+                </div>
+            </div>
+
+            <div class="review-controls" :class="{ hidden: !isFlipped }">
+                <button class="rating-btn" style="background:#FF595E" @click="rate('again')">Again</button>
+                <button class="rating-btn" style="background:#FFCA3A" @click="rate('hard')">Hard</button>
+                <button class="rating-btn" style="background:#8AC926" @click="rate('good')">Good</button>
+                <button class="rating-btn" style="background:#1982C4" @click="rate('easy')">Easy</button>
+            </div>
+        </div>
+
+        <div id="screen-wordReview" class="screen" :class="{ active: currentScreen === 'wordReview' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> <div class="header-title">Dictionary</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+            
+            <div class="fixed-controls">
+                <input type="text" v-model="wordSearch" class="search-input" placeholder="Search...">
+                
+                <div class="filter-row">
+                    <button class="filter-pill" :class="{active: wordFilter==='all'}" @click="wordFilter='all'">All</button>
+                    <button class="filter-pill" :class="{active: wordFilter==='due'}" @click="wordFilter='due'">Due</button>
+                    <button class="filter-pill" :class="{active: wordFilter==='new'}" @click="wordFilter='new'">New</button>
+                    <button class="filter-pill" :class="{active: wordFilter==='suspended'}" @click="wordFilter='suspended'">Frozen</button>
+                </div>
+
+                <div style="text-align:right;">
+                    <select v-model="sortCol" style="font-size:1.6rem; padding:5px;">
+                        <option value="dutch">A-Z (Dutch)</option>
+                        <option value="english">A-Z (English)</option>
+                        <option value="last_reviewed">Recent</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="list-scroll">
+                <div class="container-elevated">
+                    <div style="color:#999; margin-bottom:10px; font-size:1.2rem;">{{ filteredWords.length }} Words</div>
+                    <div v-for="c in filteredWords" :key="c.id" style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div class="ri-text">{{ c.dutch }}</div>
+                            <div class="ri-sub">{{ c.english }}</div>
+                            <div class="ri-sub" style="font-size:1.1rem; margin-top:5px;">
+                                <span v-if="c.suspended" style="color:red; background:#ffebee; padding:2px 6px; border-radius:4px;">FROZEN</span>
+                                <span v-else style="color:green; background:#e8f5e9; padding:2px 6px; border-radius:4px;">{{ c.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button style="font-size:1.5rem; border:none; background:none;" @click="startEditCard(c, 'wordReview')">✏️</button>
+                            <button style="font-size:1.5rem; border:none; background:none;" @click="toggleSuspend(c)">{{ c.suspended ? '❄️' : '🚫' }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-editCard" class="screen" :class="{ active: currentScreen === 'editCard' }">
+            <div class="app-header">
+                <button class="btn-text" @click="cancelEdit">Cancel</button>
+                <div class="header-title">Edit Card</div>
+                <div style="width:50px;"></div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <label class="edit-label">Dutch Word</label>
+                    <input class="edit-input" v-model="editForm.dutch" placeholder="Dutch">
+                    
+                    <label class="edit-label">English Definition</label>
+                    <input class="edit-input" v-model="editForm.english" placeholder="English">
+                    
+                    <label class="edit-label">Dutch Sentence</label>
+                    <input class="edit-input" v-model="editForm.dutch_sentence" placeholder="Example in Dutch">
+
+                    <label class="edit-label">English Sentence</label>
+                    <input class="edit-input" v-model="editForm.english_sentence" placeholder="Example in English">
+
+                    <label class="edit-label">Image</label>
+                    <div v-if="editForm.image_url">
+                        <img :src="editForm.image_url" class="edit-preview-img">
+                    </div>
+                    <div v-else style="text-align:center; padding:20px; color:#999; border:1px dashed #ccc; border-radius:12px; margin-top:10px;">No Image Selected</div>
+                    
+                    <button class="btn-large btn-outline" @click="openImageSelector('editCard')">
+                        {{ editForm.image_url ? 'Change Image' : 'Select Image' }}
+                    </button>
+
+                    <button class="btn-large" @click="saveEditCard">Save Changes</button>
+                    
+                    <button class="btn-large btn-danger" @click="deleteCard">Delete Card</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-selectImage" class="screen" :class="{ active: currentScreen === 'selectImage' }">
+            <div class="app-header">
+                <button class="btn-icon" @click="exitImageSelector">⬅️</button>
+                <div class="header-title">Select Image</div>
+                <div style="width:50px;"></div>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <div class="search-row">
+                        <input v-model="imgSearchQuery" class="search-input" placeholder="Search Unsplash...">
+                        <button class="menu-btn" style="width:auto; height:auto; padding:10px 20px; margin:0; min-height:0;" @click="searchImages">Go</button>
+                    </div>
+                    <div v-if="imgLoading" class="center-msg">Searching...</div>
+                    <div class="image-grid">
+                        <div v-for="img in imgResults" :key="img.id" class="image-item" 
+                             :class="{ selected: selectedImageUrl === img.urls.regular }"
+                             @click="selectedImageUrl = img.urls.regular">
+                            <img :src="img.urls.thumb" />
+                        </div>
+                    </div>
+                    <button class="menu-btn" style="margin-top:20px; background:var(--primary); color:white; aspect-ratio:auto; height:auto; padding:15px; font-size:1.6rem; min-height:0;" :disabled="!selectedImageUrl" @click="saveSelectedImage">
+                        {{ imageReturnScreen === 'editCard' ? 'Use This Image' : 'Save Image' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-report" class="screen" :class="{ active: currentScreen === 'report' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> <div class="header-title">Report</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+            <div class="content-scroll">
+                
+                <div class="container-elevated">
+                    <div class="chart-heading">Retention Rate (% Correct)</div>
+                    <div id="retention-chart-div" class="chart-wrapper"></div>
+                </div>
+
+                <div class="container-elevated">
+                    <div class="chart-heading">Mastery History</div>
+                    <div id="mastery-history-chart" class="chart-wrapper"></div>
+                </div>
+                
+                <div class="container-elevated">
+                    <div class="chart-heading">Current Status</div>
+                    <div id="status-chart-div" class="chart-wrapper"></div>
+                </div>
+                
+                <div class="container-elevated">
+                    <div class="chart-heading">Activity Log</div>
+                    <div id="chart-div" class="chart-wrapper"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="screen-settings" class="screen" :class="{ active: currentScreen === 'settings' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> <div class="header-title">Settings</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button> 
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <div class="header-title" style="font-size:1.8rem; margin-bottom:10px; position:relative; transform:none; left:auto;">Daily New Cards</div>
+                    <select v-model="settingsMaxNew" style="width:100%; font-size:1.8rem; padding:15px; border-radius:12px;">
+                        <option value="5">5 cards</option>
+                        <option value="10">10 cards</option>
+                        <option value="15">15 cards</option>
+                        <option value="20">20 cards</option>
+                        <option value="30">30 cards</option>
+                    </select>
+                </div>
+
+                <div class="container-elevated">
+                    <div class="header-title" style="font-size:1.8rem; margin-bottom:10px; position:relative; transform:none; left:auto;">Min Retention for New Cards</div>
+                    <div style="font-size:1.3rem; color:#788591; margin-bottom:10px;">
+                        If yesterday's retention rate was below this %, no new cards will be shown today.
+                    </div>
+                    <select v-model="settingsRetentionThreshold" style="width:100%; font-size:1.8rem; padding:15px; border-radius:12px;">
+                        <option value="0">Disabled (Always allow new)</option>
+                        <option value="70">70% Retention</option>
+                        <option value="75">75% Retention</option>
+                        <option value="80">80% Retention</option>
+                        <option value="85">85% Retention</option>
+                        <option value="90">90% Retention</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+// --- IMPORTS ---
+import { APP_VERSION, SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW } from './constants.js';
+
+// Constant for Retention Setting
+const CONFIG_RET_THRESHOLD = 'dutch_flashcards_ret_threshold';
+
+const { createApp } = Vue;
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const app = createApp({
+    data() {
+        return {
+            appVersion: APP_VERSION,
+            currentScreen: 'menu',
+            loading: { show: true, msg: 'Starting...' },
+            
+            allCards: [],
+            reviewHistory: [],
+            reviewBuffer: [],
+            
+            // Session
+            sessionQueue: [],
+            sessionTotal: 0,
+            currentIndex: 0,
+            isFlipped: false,
+            disableTransition: false,
+            sessionStarted: false,
+            showHint: false, 
+            
+            // Edit Card State
+            editForm: { id: null, dutch: '', english: '', dutch_sentence: '', english_sentence: '', image_url: '' },
+            editReturnScreen: 'menu',
+            cardToEdit: null,
+            
+            // Image Search
+            imgSearchQuery: '',
+            imgResults: [],
+            imgLoading: false,
+            selectedImageUrl: null,
+            imageReturnScreen: 'learn',
+            cardForImage: null,
+
+            // Dictionary
+            wordSearch: '',
+            wordFilter: 'all',
+            sortCol: 'dutch',
+            settingsMaxNew: '10',
+            settingsRetentionThreshold: '0' // Default to 0 (Disabled)
+        };
+    },
+    computed: {
+        stats() {
+            if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
+            const today = new Date().toLocaleDateString('en-CA');
+            const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString('en-CA');
+            
+            // Limit for Today (based on YESTERDAY'S performance)
+            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+            const maxNewToday = this.getAdjustedMaxNew(yesterday);
+
+            // Limit for Tomorrow (based on TODAY'S performance)
+            const maxNewTomorrow = this.getAdjustedMaxNew(today);
+
+            const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
+            
+            return {
+                dueNew: Math.max(0, maxNewToday - newDone),
+                dueReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) <= today).length,
+                tomorrowNew: maxNewTomorrow,
+                tomorrowReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) === tomorrow).length
+            };
+        },
+        currentCard() { return this.sessionQueue[this.currentIndex] || null; },
+        progressPercent() { return this.sessionTotal ? ((this.sessionTotal - this.sessionQueue.length) / this.sessionTotal) * 100 : 0; },
+        progressText() { 
+            const completed = this.sessionTotal - this.sessionQueue.length;
+            return `${Math.min(completed + 1, this.sessionTotal)} / ${this.sessionTotal}`; 
+        },
+        filteredWords() {
+            const today = new Date().toLocaleDateString('en-CA');
+            let list = this.allCards.filter(c => {
+                const match = (c.dutch||'').toLowerCase().includes(this.wordSearch.toLowerCase()) || (c.english||'').toLowerCase().includes(this.wordSearch.toLowerCase());
+                if(!match) return false;
+                if(this.wordFilter === 'suspended') return c.suspended;
+                if(c.suspended) return false;
+                if(this.wordFilter === 'new') return c.type === 'new';
+                if(this.wordFilter === 'due') return (c.type !== 'new' && c.due_date && c.due_date.slice(0,10) <= today);
+                return true;
+            });
+            // Sort
+            list.sort((a,b) => {
+                const va = a[this.sortCol] || ""; const vb = b[this.sortCol] || "";
+                return va > vb ? 1 : -1;
+            });
+            return list.slice(0, 100); 
+        }
+    },
+    async mounted() {
+        try {
+            this.loading.msg = "Connecting...";
+            this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
+            this.settingsRetentionThreshold = localStorage.getItem(CONFIG_RET_THRESHOLD) || "0";
+            
+            this.loading.msg = "Loading Cards...";
+            let { data: cards, error: err1 } = await supabase.from("cards").select("*").range(0, 10000);
+            if(err1) throw err1;
+            this.allCards = cards || [];
+
+            this.loading.msg = "Loading History...";
+            let { data: hist, error: err2 } = await supabase.from("reviewhistory").select("*");
+            if(err2) throw err2;
+            this.reviewHistory = hist || [];
+
+            if(window.google) google.charts.load('current', {'packages':['corechart']});
+            
+            // Add resize listener for charts
+            window.addEventListener('resize', () => {
+                if(this.currentScreen === 'report') this.drawCharts();
+            });
+
+            this.loading.show = false;
+        } catch (e) {
+            alert("Database Error: " + e.message);
+            this.loading.msg = "Failed: " + e.message;
+        }
+    },
+    methods: {
+        async nav(id) {
+            if(id === 'menu') await this.saveProgress();
+            this.currentScreen = id;
+            if(id === 'learn') this.startSession();
+            if(id === 'report') setTimeout(this.drawCharts, 500);
+        },
+        async saveProgress() {
+            this.loading = { show:true, msg:"Saving..." };
+            if(this.reviewBuffer.length > 0) {
+                const toSend = [...this.reviewBuffer];
+                this.reviewBuffer = [];
+                this.reviewHistory.push(...toSend);
+                await supabase.from("reviewhistory").insert(toSend);
+                
+                for(const r of toSend) {
+                    const c = this.allCards.find(x => x.id === r.cardid);
+                    if(c) await supabase.from("cards").update({ 
+                        type: c.type, interval: c.interval, ease: c.ease, 
+                        last_reviewed: c.last_reviewed, due_date: c.due_date, 
+                        first_seen: c.first_seen, reps: c.reps, lapses: c.lapses, image_url: c.image_url, suspended: c.suspended 
+                    }).eq("id", c.id);
+                }
+            }
+            localStorage.setItem(CONFIG_MAX_NEW, this.settingsMaxNew);
+            localStorage.setItem(CONFIG_RET_THRESHOLD, this.settingsRetentionThreshold);
+            this.loading.show = false;
+        },
+        // --- HELPER FOR RETENTION LOGIC ---
+        // Accept a 'dateToCheck' argument (YYYY-MM-DD string)
+        getAdjustedMaxNew(dateToCheck) {
+            const rawLimit = parseInt(this.settingsMaxNew || 10);
+            const threshold = parseInt(this.settingsRetentionThreshold || 0);
+
+            // If feature disabled (0), return normal limit
+            if (threshold === 0) return rawLimit;
+
+            // Filter history for the SPECIFIC DATE
+            const dayReviews = this.reviewHistory.filter(r => 
+                r.timestamp.slice(0,10) === dateToCheck
+            );
+
+            // If no reviews on that date, default to allowing new cards
+            if (dayReviews.length === 0) return rawLimit;
+
+            // Calculate Pass Rate
+            const passed = dayReviews.filter(r => r.rating !== 'again').length;
+            const rate = (passed / dayReviews.length) * 100;
+
+            // If rate is strictly less than threshold, limit is 0
+            if (rate < threshold) return 0;
+
+            return rawLimit;
+        },
+        startSession() {
+            const today = new Date().toLocaleDateString('en-CA');
+            
+            // Use adjusted max (checks YESTERDAY for today's session)
+            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+            const max = this.getAdjustedMaxNew(yesterday);
+            
+            const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
+            
+            // 1. Get Due Review Cards (Shuffle them randomly)
+            let due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
+            due.sort(() => Math.random() - 0.5);
+
+            // 2. Get New Cards (Sort them by ID order)
+            let n = this.allCards.filter(c => !c.suspended && c.type==="new");
+            n.sort((a, b) => a.id - b.id); 
+            
+            const limit = Math.max(0, max - done);
+            const newCardsForSession = n.slice(0, limit);
+            
+            // 3. Combine and shuffle entire queue so New/Review are mixed
+            let combined = [...due, ...newCardsForSession];
+            combined.sort(() => Math.random() - 0.5);
+            
+            this.sessionQueue = combined;
+            this.sessionTotal = this.sessionQueue.length;
+            this.currentIndex = 0;
+            this.sessionStarted = true;
+            this.resetCard();
+        },
+        resetCard() {
+            this.disableTransition = true;
+            this.isFlipped = false;
+            this.showHint = false;
+            this.$nextTick(() => setTimeout(() => this.disableTransition=false, 50));
+        },
+        flipCard() { this.isFlipped = !this.isFlipped; },
+        async rate(rating) {
+            if (!this.currentCard) return;
+            const c = this.currentCard;
+            
+            const nowIso = new Date().toISOString();
+            const localDate = new Date().toLocaleDateString('en-CA'); 
+            const wasNew = c.type === "new";
+            
+            c.reps = (c.reps || 0) + 1;
+            
+            // --- NEW CARD LOGIC ---
+            if (wasNew) { 
+                c.first_seen = localDate; 
+                
+                if (rating === "again") {
+                    c.interval = 0; // Keep it as 'new' for the current session
+                    c.ease = 2.5; 
+                } else {
+                    c.type = "review"; // Graduate to review phase
+                    if (rating === "hard") {
+                        c.interval = 1;
+                        c.ease = 2.35; // Slight ease penalty for initial struggle
+                    } else if (rating === "good") {
+                        c.interval = 2; // Bumped up slightly to differentiate from Hard
+                        c.ease = 2.5;
+                    } else if (rating === "easy") {
+                        c.interval = 4;
+                        c.ease = 2.65;
+                    }
+                }
+            } 
+            // --- REVIEW CARD LOGIC ---
+            else {
+                if (rating === "again") { 
+                    c.lapses = (c.lapses || 0) + 1; 
+                    
+                    // Retain 20% of the previous interval
+                    c.interval = Math.max(1, Math.round(c.interval * 0.20)); 
+                    c.ease = Math.max(1.3, c.ease - 0.2); 
+                    
+                    // --- LEECH PROTECTION LOGIC ---
+                    if (c.lapses >= 7 && !c.suspended) {
+                        // setTimeout allows the card to flip before the browser blocks the UI with confirm()
+                        setTimeout(() => {
+                            if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend (freeze) it?`)) {
+                                c.suspended = true;
+                                supabase.from("cards").update({ suspended: true }).eq("id", c.id).then();
+                            }
+                        }, 50);
+                    }
+                }
+                else {
+                    let multiplier;
+                    let easeChange = 0;
+                    let isHard = false;
+
+                    if (rating === "hard") { 
+                        multiplier = 1.2;
+                        easeChange = -0.15;
+                        isHard = true;
+                    }
+                    else if (rating === "good") { 
+                        multiplier = c.ease; 
+                        easeChange = 0;
+                    }
+                    else if (rating === "easy") { 
+                        multiplier = c.ease + 0.15; 
+                        easeChange = 0.15;
+                    }
+
+                    let nextInterval = Math.round(c.interval * multiplier);
+                    
+                    // --- Conditional Safety Net ---
+                    if (nextInterval <= c.interval) {
+                        nextInterval = c.interval + 1; // Always grow by at least 1 day
+                    }
+                    
+                    c.interval = nextInterval;
+                    c.ease = Math.max(1.3, c.ease + easeChange);
+                }
+            }
+            
+            // Calculate Due Date based on current local day
+            const due = new Date(); 
+            due.setDate(due.getDate() + c.interval);
+            c.due_date = due.toLocaleDateString('en-CA'); // Now safely outputs purely local YYYY-MM-DD
+            c.last_reviewed = localDate;
+            
+            // Save to buffer
+            this.reviewBuffer.push({ 
+                cardid: c.id, 
+                rating, 
+                timestamp: nowIso, 
+                reps: c.reps, 
+                lapses: c.lapses, 
+                interval: c.interval, 
+                ease: c.ease, 
+                review_type: wasNew ? "new" : "review" 
+            });
+            
+            // --- QUEUE MANAGEMENT ---
+            if (rating === "again") {
+                // Push the failed card back into the active session
+                this.sessionQueue.push(c);
+                
+                // Increase session total so the progress bar accurately reflects the added rep
+                this.sessionTotal++;
+            }
+
+            // Remove the current instance of the card from the front of the queue
+            this.sessionQueue.splice(this.currentIndex, 1);
+            
+            if (this.reviewBuffer.length >= 5) this.saveProgress();
+            this.resetCard();
+        },
+        speakTTS() {
+            if(!this.currentCard || this.isFlipped) return;
+            // Strip text in brackets like "aardig (adj)" -> "aardig"
+            const textToSpeak = this.currentCard.dutch.replace(/\s*\(.*?\)/g, "").trim();
+            const u = new SpeechSynthesisUtterance(textToSpeak);
+            u.lang = "nl-NL";
+            window.speechSynthesis.speak(u);
+        },
+        async toggleSuspend(card) {
+            card.suspended = !card.suspended;
+            await supabase.from("cards").update({ suspended: card.suspended }).eq("id", card.id);
+        },
+        
+        // --- EDIT CARD LOGIC ---
+        startEditCard(card, fromScreen) {
+            this.cardToEdit = card;
+            this.editReturnScreen = fromScreen;
+            this.editForm = {
+                id: card.id,
+                dutch: card.dutch,
+                english: card.english,
+                dutch_sentence: card.dutch_sentence || '',
+                english_sentence: card.english_sentence || '',
+                image_url: card.image_url
+            };
+            this.currentScreen = 'editCard';
+        },
+        async saveEditCard() {
+            if(!this.cardToEdit) return;
+            this.loading = { show: true, msg: "Saving..." };
+            const { error } = await supabase.from("cards").update({
+                dutch: this.editForm.dutch,
+                english: this.editForm.english,
+                dutch_sentence: this.editForm.dutch_sentence,
+                english_sentence: this.editForm.english_sentence,
+                image_url: this.editForm.image_url
+            }).eq("id", this.editForm.id);
+
+            if (error) {
+                alert("Error saving: " + error.message);
+                this.loading.show = false;
+                return;
+            }
+
+            this.cardToEdit.dutch = this.editForm.dutch;
+            this.cardToEdit.english = this.editForm.english;
+            this.cardToEdit.dutch_sentence = this.editForm.dutch_sentence;
+            this.cardToEdit.english_sentence = this.editForm.english_sentence;
+            this.cardToEdit.image_url = this.editForm.image_url;
+
+            this.loading.show = false;
+            this.currentScreen = this.editReturnScreen;
+        },
+        async deleteCard() {
+            if(!this.cardToEdit) return;
+            
+            if(!confirm("Are you sure you want to permanently delete this card? This cannot be undone.")) {
+                return;
+            }
+
+            this.loading = { show: true, msg: "Deleting..." };
+            
+            const { error } = await supabase.from("cards").delete().eq("id", this.cardToEdit.id);
+
+            if (error) {
+                alert("Error deleting: " + error.message);
+                this.loading.show = false;
+                return;
+            }
+            
+            // Remove from local list
+            this.allCards = this.allCards.filter(c => c.id !== this.cardToEdit.id);
+            
+            // If we were in a session, remove it from session queue if it exists there
+            this.sessionQueue = this.sessionQueue.filter(c => c.id !== this.cardToEdit.id);
+            if(this.sessionQueue.length === 0) {
+                 this.sessionTotal = 0; 
+                 this.sessionStarted = false;
+            }
+
+            this.loading.show = false;
+            // Return to dictionary primarily, or menu if that's safer
+            this.currentScreen = 'wordReview';
+        },
+        cancelEdit() {
+            this.currentScreen = this.editReturnScreen;
+        },
+
+        // --- IMAGE SELECTION ---
+        openImageSelector(fromScreen, cardOverride=null) {
+            this.imageReturnScreen = fromScreen;
+            if (fromScreen === 'editCard') {
+                this.imgSearchQuery = this.editForm.english;
+                this.cardForImage = null; 
+            } else {
+                this.cardForImage = cardOverride || this.currentCard;
+                this.imgSearchQuery = this.cardForImage.english;
+            }
+            this.imgResults = [];
+            this.selectedImageUrl = null;
+            this.currentScreen = 'selectImage';
+            this.searchImages();
+        },
+        exitImageSelector() { this.currentScreen = this.imageReturnScreen; },
+        async searchImages() {
+            if(!this.imgSearchQuery) return;
+            this.imgLoading = true;
+            try {
+                const res = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(this.imgSearchQuery)}&per_page=12&client_id=${UNSPLASH_ACCESS_KEY}`);
+                const json = await res.json();
+                this.imgResults = json.results || [];
+            } catch(e) { console.error(e); }
+            this.imgLoading = false;
+        },
+        async saveSelectedImage() {
+            if(!this.selectedImageUrl) return;
+            if (this.imageReturnScreen === 'editCard') {
+                this.editForm.image_url = this.selectedImageUrl;
+                this.exitImageSelector();
+                return;
+            }
+            if(!this.cardForImage) return;
+            this.cardForImage.image_url = this.selectedImageUrl;
+            await supabase.from("cards").update({ image_url: this.selectedImageUrl }).eq("id", this.cardForImage.id);
+            this.exitImageSelector();
+        },
+
+        drawCharts() {
+            const commonOpts = { 
+                chartArea: { width: '85%', height: '70%', top: 20 }, 
+                legend: { position: 'bottom' },
+                backgroundColor: 'transparent'
+            };
+
+            // 1. Retention Rate Chart
+            const retMap = new Map();
+            // Iterate history, skipping 'new' cards (learning phase)
+            this.reviewHistory.forEach(h => {
+                if(h.review_type === 'new') return; 
+                const k = h.timestamp.slice(0, 10);
+                if(!retMap.has(k)) retMap.set(k, { pass: 0, fail: 0 });
+                const d = retMap.get(k);
+                if(h.rating === 'again') d.fail++;
+                else d.pass++;
+            });
+
+            const d4 = new google.visualization.DataTable();
+            d4.addColumn('date', 'Date');
+            d4.addColumn('number', 'Retention %');
+            
+            const retRows = [];
+            const sortedKeys = Array.from(retMap.keys()).sort();
+            sortedKeys.forEach(k => {
+                const d = retMap.get(k);
+                const total = d.pass + d.fail;
+                const rate = total ? (d.pass / total) * 100 : 0;
+                const [y, m, day] = k.split('-').map(Number);
+                retRows.push([new Date(y, m - 1, day), rate]);
+            });
+            d4.addRows(retRows);
+
+            new google.visualization.LineChart(document.getElementById('retention-chart-div')).draw(d4, {
+                ...commonOpts,
+                vAxis: { minValue: 0, maxValue: 100, format: '#\'%\'' }, 
+                colors: ['#2EC4B6'],
+                legend: { position: 'none' },
+                pointSize: 5
+            });
+
+            // 2. Mastery Status
+            const stats = { new:0, learning:0, reviewing:0, mastered:0 };
+            this.allCards.forEach(c => {
+                if(c.suspended) return;
+                if(c.type==='new') stats.new++;
+                else if(c.interval <= 3) stats.learning++;
+                else if(c.interval <= 21) stats.reviewing++;
+                else stats.mastered++;
+            });
+            new google.visualization.PieChart(document.getElementById('status-chart-div')).draw(
+                google.visualization.arrayToDataTable([['S','C'],['New',stats.new],['Lrn',stats.learning],['Rev',stats.reviewing],['Mst',stats.mastered]]),
+                { ...commonOpts, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'] }
+            );
+            
+            // 3. Activity (Day)
+            const today = new Date(); const m = today.getMonth();
+            const map = new Map();
+            for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) map.set(d.toISOString().slice(0,10), {new:0, rev:0, d:new Date(d)});
+            this.reviewHistory.forEach(h => {
+                const k = h.timestamp.slice(0,10);
+                if(map.has(k)) h.review_type==='new' ? map.get(k).new++ : map.get(k).rev++;
+            });
+            const d2 = new google.visualization.DataTable();
+            d2.addColumn('date','Date'); d2.addColumn('number','New'); d2.addColumn('number','Rev');
+            for(const v of map.values()) d2.addRow([v.d, v.new, v.rev]);
+            new google.visualization.ColumnChart(document.getElementById('chart-div')).draw(d2, {
+                ...commonOpts, 
+                isStacked:true, 
+                colors:['#FF9F1C','#1a80d9'], 
+                bar:{groupWidth:'90%'}
+            });
+
+            // 4. Mastery History
+            const cardMap = new Map();
+            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:c.type, ivl:c.interval||0}); });
+            const history = [...this.reviewHistory].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+            const dailyStats = [];
+            let curDate = history[0]?.timestamp.slice(0,10) || today.toISOString().slice(0,10);
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            let idx = 0;
+            
+            while(curDate <= todayStr) {
+                while(idx < history.length && history[idx].timestamp.slice(0,10) <= curDate) idx++;
+                let s = {n:0, l:0, r:0, m:0};
+                for(const st of cardMap.values()) {
+                    if(st.status==='new') s.n++;
+                    else if(st.ivl<=3) s.l++;
+                    else if(st.ivl<=21) s.r++;
+                    else s.m++;
+                }
+                const [y, mm, dd] = curDate.split('-').map(Number);
+                dailyStats.push([new Date(y, mm-1, dd), s.n, s.l, s.r, s.m]);
+                const nextD = new Date(y, mm-1, dd); nextD.setDate(nextD.getDate()+1);
+                curDate = nextD.toISOString().slice(0,10);
+            }
+            const d3 = new google.visualization.DataTable();
+            d3.addColumn('date','Date'); d3.addColumn('number','New'); d3.addColumn('number','Lrn'); d3.addColumn('number','Rev'); d3.addColumn('number','Mst');
+            d3.addRows(dailyStats);
+            new google.visualization.AreaChart(document.getElementById('mastery-history-chart')).draw(d3, {
+                ...commonOpts, 
+                isStacked:true, 
+                colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], 
+                areaOpacity:0.9
+            });
+        }
+    }
+});
+app.mount('#app');
+</script>
+</body>
+</html>
