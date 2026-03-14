@@ -218,9 +218,9 @@
         .hint-btn { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .edit-card-btn { position: absolute; bottom: 15px; right: 15px; background: #eee; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; font-size: 1.3rem; cursor: pointer; z-index: 10; }
 
-        /*  Controls */
+        /* Rating Controls */
         .review-controls { position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px; padding-bottom: calc(20px + var(--safe-area-bottom)); background: rgba(255,255,255,0.95); border-top: 1px solid #eee; display: flex; gap: 10px; z-index: 100; }
-        .-btn { flex: 1; border: none; padding: 25px 0; border-radius: 12px; font-weight: 700; color: white; font-size: 1.6rem; cursor: pointer; }
+        .rating-btn { flex: 1; border: none; padding: 25px 0; border-radius: 12px; font-weight: 700; color: white; font-size: 1.6rem; cursor: pointer; }
         
         /* Dictionary */
         .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -602,11 +602,11 @@ const app = createApp({
     computed: {
         stats() {
             if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
-            const today = new Date().toISOString().slice(0, 10);
-            const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+            const today = new Date().toLocaleDateString('en-CA');
+            const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString('en-CA');
             
             // Limit for Today (based on YESTERDAY'S performance)
-            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
             const maxNewToday = this.getAdjustedMaxNew(yesterday);
 
             // Limit for Tomorrow (based on TODAY'S performance)
@@ -628,7 +628,7 @@ const app = createApp({
             return `${Math.min(completed + 1, this.sessionTotal)} / ${this.sessionTotal}`; 
         },
         filteredWords() {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = new Date().toLocaleDateString('en-CA');
             let list = this.allCards.filter(c => {
                 const match = (c.dutch||'').toLowerCase().includes(this.wordSearch.toLowerCase()) || (c.english||'').toLowerCase().includes(this.wordSearch.toLowerCase());
                 if(!match) return false;
@@ -730,10 +730,10 @@ const app = createApp({
             return rawLimit;
         },
         startSession() {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = new Date().toLocaleDateString('en-CA');
             
             // Use adjusted max (checks YESTERDAY for today's session)
-            const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
             const max = this.getAdjustedMaxNew(yesterday);
             
             const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
@@ -769,119 +769,147 @@ const app = createApp({
 async rate(rating) {
     if (!this.currentCard) return;
     const c = this.currentCard;
-    
-    // Use ISO for exact database timestamps, but en-CA for local YYYY-MM-DD tracking
+
     const nowIso = new Date().toISOString();
-    const localDate = new Date().toLocaleDateString('en-CA'); 
+    const today = new Date().toLocaleDateString('en-CA');
     const wasNew = c.type === "new";
-    
+
     c.reps = (c.reps || 0) + 1;
-    
-    // --- NEW CARD LOGIC ---
-    if (wasNew) { 
-        c.type = "review"; 
-        c.first_seen = localDate; 
-        
+
+    // -----------------------------
+    // NEW CARD LOGIC
+    // -----------------------------
+    if (wasNew) {
+
         if (rating === "again") {
-            c.interval = 0; // Due today
-            c.ease = 2.5; 
-        } else if (rating === "hard") {
-            c.interval = 1;
-            c.ease = 2.35; // Slight ease penalty for initial struggle
-        } else if (rating === "good") {
-            c.interval = 1;
+
+            // Keep card new and show again soon
+            c.interval = 0;
             c.ease = 2.5;
-        } else if (rating === "easy") {
-            c.interval = 4;
-            c.ease = 2.65;
+
+            // insert card a few cards later instead of end
+            const pos = Math.min(3, this.sessionQueue.length);
+            this.sessionQueue.splice(pos, 0, c);
+
+        } else {
+
+            // Only mark first_seen when graduating
+            c.first_seen = today;
+            c.type = "review";
+
+            if (rating === "hard") {
+                c.interval = 1;
+                c.ease = 2.35;
+            }
+
+            else if (rating === "good") {
+                c.interval = 2;
+                c.ease = 2.5;
+            }
+
+            else if (rating === "easy") {
+                c.interval = 4;
+                c.ease = 2.65;
+            }
         }
-    } 
-    // --- REVIEW CARD LOGIC ---
+    }
+
+    // -----------------------------
+    // REVIEW CARD LOGIC
+    // -----------------------------
     else {
-        if (rating === "again") { 
-            c.lapses = (c.lapses || 0) + 1; 
-            
-            // Retain 20% of the previous interval
-            c.interval = Math.max(1, Math.round(c.interval * 0.20)); 
-            c.ease = Math.max(1.3, c.ease - 0.2); 
-            
-            // --- LEECH PROTECTION LOGIC ---
+
+        if (rating === "again") {
+
+            c.lapses = (c.lapses || 0) + 1;
+
+            // retain 20% interval
+            c.interval = Math.max(1, Math.round(c.interval * 0.2));
+
+            c.ease = Math.max(1.3, c.ease - 0.2);
+
+            // requeue soon
+            const pos = Math.min(3, this.sessionQueue.length);
+            this.sessionQueue.splice(pos, 0, c);
+
+            // leech protection
             if (c.lapses >= 7 && !c.suspended) {
-                // setTimeout allows the card to flip before the browser blocks the UI with confirm()
                 setTimeout(() => {
-                    if(confirm(`This card has been lapsed ${c.lapses} times.\n\nDo you want to suspend (freeze) it?`)) {
+                    if(confirm(`This card has been lapsed ${c.lapses} times.\n\nSuspend it?`)) {
                         c.suspended = true;
-                        supabase.from("cards").update({ suspended: true }).eq("id", c.id).then();
+                        supabase.from("cards")
+                            .update({ suspended: true })
+                            .eq("id", c.id)
+                            .then();
                     }
                 }, 50);
             }
-        }
-        else {
-            let multiplier;
-            let easeChange = 0;
-            let isHard = false;
 
-            if (rating === "hard") { 
+        }
+
+        else {
+
+            let multiplier = 1;
+            let easeChange = 0;
+
+            if (rating === "hard") {
                 multiplier = 1.2;
                 easeChange = -0.15;
-                isHard = true;
             }
-            else if (rating === "good") { 
-                multiplier = c.ease; // Removed the aggressive 1.05 multiplier
+
+            if (rating === "good") {
+                multiplier = c.ease;
                 easeChange = 0;
             }
-            else if (rating === "easy") { 
-                multiplier = c.ease + 0.15; 
+
+            if (rating === "easy") {
+                multiplier = c.ease * 1.15;
                 easeChange = 0.15;
             }
 
-            let nextInterval = Math.round(c.interval * multiplier);
-            
-            // --- Conditional Safety Net ---
+            let nextInterval = Math.round((c.interval + 1) * multiplier);
+
+            // ensure interval grows
             if (nextInterval <= c.interval) {
-                if (isHard) {
-                    nextInterval = c.interval; 
-                } else {
-                    nextInterval = c.interval + 1;
-                }
+                nextInterval = c.interval + 1;
             }
-            
+
             c.interval = nextInterval;
             c.ease = Math.max(1.3, c.ease + easeChange);
         }
     }
-    
-    // Calculate Due Date based on current local day
-    const due = new Date(); 
+
+    // -----------------------------
+    // DUE DATE
+    // -----------------------------
+    const due = new Date();
+    due.setHours(0,0,0,0);
     due.setDate(due.getDate() + c.interval);
-    c.due_date = due.toISOString(); 
-    c.last_reviewed = localDate;
-    
-    // Save to buffer
-    this.reviewBuffer.push({ 
-        cardid: c.id, 
-        rating, 
-        timestamp: nowIso, 
-        reps: c.reps, 
-        lapses: c.lapses, 
-        interval: c.interval, 
-        ease: c.ease, 
-        review_type: wasNew ? "new" : "review" 
+
+    c.due_date = due.toLocaleDateString('en-CA');
+    c.last_reviewed = today;
+
+    // -----------------------------
+    // SAVE REVIEW
+    // -----------------------------
+    this.reviewBuffer.push({
+        cardid: c.id,
+        rating,
+        timestamp: nowIso,
+        reps: c.reps,
+        lapses: c.lapses,
+        interval: c.interval,
+        ease: c.ease,
+        review_type: wasNew ? "new" : "review"
     });
-    
-    // --- QUEUE MANAGEMENT ---
-    if (rating === "again") {
-        // Push the failed card back into the active session
-        this.sessionQueue.push(c);
-        
-        // Increase session total so the progress bar accurately reflects the added rep
-        this.sessionTotal++;
+
+    // remove current card
+    this.sessionQueue.splice(this.currentIndex, 1);
+
+    if (this.reviewBuffer.length >= 5) {
+        this.saveProgress();
     }
 
-    // Remove the current instance of the card from the front of the queue
-    this.sessionQueue.splice(this.currentIndex, 1);
-    
-    if (this.reviewBuffer.length >= 5) this.saveProgress();
     this.resetCard();
 },
         speakTTS() {
@@ -1091,7 +1119,7 @@ async rate(rating) {
             const history = [...this.reviewHistory].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
             const dailyStats = [];
             let curDate = history[0]?.timestamp.slice(0,10) || today.toISOString().slice(0,10);
-            const todayStr = today.toISOString().slice(0,10);
+            const todayStr = new Date().toLocaleDateString('en-CA');
             let idx = 0;
             
             while(curDate <= todayStr) {
