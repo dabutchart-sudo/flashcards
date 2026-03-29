@@ -335,7 +335,7 @@
                         </div>
                         <div class="face-content">
                             <img v-if="currentCard.image_url" :src="currentCard.image_url" class="hint-image" :class="{ hidden: !showHint }" />
-                            <div class="word-text">{{ currentCard.dutch }}</div>
+                            <div class="word-text">{{ currentCard.dutch }}<span v-if="currentCard.partofword"> ({{ currentCard.partofword }})</span></div>
                             <div v-if="currentCard.dutch_sentence" class="sentence-text">{{ currentCard.dutch_sentence }}</div>
                         </div>
                         
