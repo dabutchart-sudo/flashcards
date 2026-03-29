@@ -1,6 +1,6 @@
 
 // App Version
-export const APP_VERSION = "4.0";
+export const APP_VERSION = "5.0";
 
 // Your Supabase Project URL
 export const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
