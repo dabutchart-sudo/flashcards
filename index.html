@@ -335,7 +335,9 @@
                         </div>
                         <div class="face-content">
                             <img v-if="currentCard.image_url" :src="currentCard.image_url" class="hint-image" :class="{ hidden: !showHint }" />
+                            
                             <div class="word-text">{{ currentCard.dutch }}<span v-if="currentCard.partofword"> ({{ currentCard.partofword }})</span></div>
+                            
                             <div v-if="currentCard.dutch_sentence" class="sentence-text">{{ currentCard.dutch_sentence }}</div>
                         </div>
                         
@@ -602,11 +604,19 @@ const app = createApp({
     computed: {
         stats() {
             if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
-            const today = new Date().toLocaleDateString('en-CA');
-            const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString('en-CA');
+            
+            const todayD = new Date();
+            const today = todayD.toLocaleDateString('en-CA');
+            
+            const tomorrowD = new Date(todayD);
+            tomorrowD.setDate(tomorrowD.getDate() + 1);
+            const tomorrow = tomorrowD.toLocaleDateString('en-CA');
+            
+            const yesterdayD = new Date(todayD);
+            yesterdayD.setDate(yesterdayD.getDate() - 1);
+            const yesterday = yesterdayD.toLocaleDateString('en-CA');
             
             // Limit for Today (based on YESTERDAY'S performance)
-            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
             const maxNewToday = this.getAdjustedMaxNew(yesterday);
 
             // Limit for Tomorrow (based on TODAY'S performance)
@@ -712,9 +722,9 @@ const app = createApp({
             // If feature disabled (0), return normal limit
             if (threshold === 0) return rawLimit;
 
-            // Filter history for the SPECIFIC DATE
+            // Filter history for the SPECIFIC DATE (Safely parse timestamp)
             const dayReviews = this.reviewHistory.filter(r => 
-                r.timestamp.slice(0,10) === dateToCheck
+                new Date(r.timestamp).toLocaleDateString('en-CA') === dateToCheck
             );
 
             // If no reviews on that date, default to allowing new cards
@@ -730,10 +740,13 @@ const app = createApp({
             return rawLimit;
         },
         startSession() {
-            const today = new Date().toLocaleDateString('en-CA');
+            const todayD = new Date();
+            const today = todayD.toLocaleDateString('en-CA');
+            const yesterdayD = new Date(todayD);
+            yesterdayD.setDate(yesterdayD.getDate() - 1);
+            const yesterday = yesterdayD.toLocaleDateString('en-CA');
             
             // Use adjusted max (checks YESTERDAY for today's session)
-            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
             const max = this.getAdjustedMaxNew(yesterday);
             
             const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
@@ -1051,7 +1064,7 @@ async rate(rating) {
             // Iterate history, skipping 'new' cards (learning phase)
             this.reviewHistory.forEach(h => {
                 if(h.review_type === 'new') return; 
-                const k = h.timestamp.slice(0, 10);
+                const k = new Date(h.timestamp).toLocaleDateString('en-CA');
                 if(!retMap.has(k)) retMap.set(k, { pass: 0, fail: 0 });
                 const d = retMap.get(k);
                 if(h.rating === 'again') d.fail++;
@@ -1098,9 +1111,11 @@ async rate(rating) {
             // 3. Activity (Day)
             const today = new Date(); const m = today.getMonth();
             const map = new Map();
-            for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) map.set(d.toISOString().slice(0,10), {new:0, rev:0, d:new Date(d)});
+            for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) {
+                 map.set(d.toLocaleDateString('en-CA'), {new:0, rev:0, d:new Date(d)});
+            }
             this.reviewHistory.forEach(h => {
-                const k = h.timestamp.slice(0,10);
+                const k = new Date(h.timestamp).toLocaleDateString('en-CA');
                 if(map.has(k)) h.review_type==='new' ? map.get(k).new++ : map.get(k).rev++;
             });
             const d2 = new google.visualization.DataTable();
@@ -1113,17 +1128,29 @@ async rate(rating) {
                 bar:{groupWidth:'90%'}
             });
 
-            // 4. Mastery History
+            // 4. Mastery History (Completely patched for DST safety)
             const cardMap = new Map();
             this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:c.type, ivl:c.interval||0}); });
-            const history = [...this.reviewHistory].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+            
+            const history = [...this.reviewHistory].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
             const dailyStats = [];
-            let curDate = history[0]?.timestamp.slice(0,10) || today.toISOString().slice(0,10);
-            const todayStr = new Date().toLocaleDateString('en-CA');
+            
+            let loopDate = history.length ? new Date(history[0].timestamp) : new Date();
+            loopDate.setHours(0,0,0,0);
+            
+            const endDate = new Date();
+            endDate.setHours(0,0,0,0);
+            
             let idx = 0;
             
-            while(curDate <= todayStr) {
-                while(idx < history.length && history[idx].timestamp.slice(0,10) <= curDate) idx++;
+            while(loopDate <= endDate) {
+                const nextDay = new Date(loopDate);
+                nextDay.setDate(nextDay.getDate() + 1);
+                
+                while(idx < history.length && new Date(history[idx].timestamp) < nextDay) {
+                    idx++;
+                }
+                
                 let s = {n:0, l:0, r:0, m:0};
                 for(const st of cardMap.values()) {
                     if(st.status==='new') s.n++;
@@ -1131,11 +1158,11 @@ async rate(rating) {
                     else if(st.ivl<=21) s.r++;
                     else s.m++;
                 }
-                const [y, mm, dd] = curDate.split('-').map(Number);
-                dailyStats.push([new Date(y, mm-1, dd), s.n, s.l, s.r, s.m]);
-                const nextD = new Date(y, mm-1, dd); nextD.setDate(nextD.getDate()+1);
-                curDate = nextD.toISOString().slice(0,10);
+                
+                dailyStats.push([new Date(loopDate), s.n, s.l, s.r, s.m]);
+                loopDate.setDate(loopDate.getDate() + 1);
             }
+            
             const d3 = new google.visualization.DataTable();
             d3.addColumn('date','Date'); d3.addColumn('number','New'); d3.addColumn('number','Lrn'); d3.addColumn('number','Rev'); d3.addColumn('number','Mst');
             d3.addRows(dailyStats);
