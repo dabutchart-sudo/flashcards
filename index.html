@@ -779,152 +779,156 @@ const app = createApp({
             this.$nextTick(() => setTimeout(() => this.disableTransition=false, 50));
         },
         flipCard() { this.isFlipped = !this.isFlipped; },
-async rate(rating) {
-    if (!this.currentCard) return;
-    const c = this.currentCard;
+        async rate(rating) {
+            if (!this.currentCard) return;
+            const c = this.currentCard;
 
-    const nowIso = new Date().toISOString();
-    const today = new Date().toLocaleDateString('en-CA');
-    const wasNew = c.type === "new";
+            const nowIso = new Date().toISOString();
+            const today = new Date().toLocaleDateString('en-CA');
+            const wasNew = c.type === "new";
 
-    c.reps = (c.reps || 0) + 1;
+            c.reps = (c.reps || 0) + 1;
 
-    // -----------------------------
-    // NEW CARD LOGIC
-    // -----------------------------
-    if (wasNew) {
+            // -----------------------------
+            // NEW CARD LOGIC
+            // -----------------------------
+            if (wasNew) {
 
-        if (rating === "again") {
+                if (rating === "again") {
 
-            // Keep card new and show again soon
-            c.interval = 0;
-            c.ease = 2.5;
+                    // Keep card new and show again soon
+                    c.interval = 0;
+                    c.ease = 2.5;
 
-            // insert card a few cards later instead of end
-            const pos = Math.min(3, this.sessionQueue.length);
-            this.sessionQueue.splice(pos, 0, c);
+                    // insert card a few cards later instead of end
+                    const pos = Math.min(3, this.sessionQueue.length);
+                    this.sessionQueue.splice(pos, 0, c);
 
-        } else {
+                } else {
 
-            // Only mark first_seen when graduating
-            c.first_seen = today;
-            c.type = "review";
+                    // Only mark first_seen when graduating
+                    c.first_seen = today;
+                    c.type = "review";
 
-            if (rating === "hard") {
-                c.interval = 1;
-                c.ease = 2.35;
-            }
-
-            else if (rating === "good") {
-                c.interval = 2;
-                c.ease = 2.5;
-            }
-
-            else if (rating === "easy") {
-                c.interval = 4;
-                c.ease = 2.65;
-            }
-        }
-    }
-
-    // -----------------------------
-    // REVIEW CARD LOGIC
-    // -----------------------------
-    else {
-
-        if (rating === "again") {
-
-            c.lapses = (c.lapses || 0) + 1;
-
-            // retain 20% interval
-            c.interval = Math.max(1, Math.round(c.interval * 0.2));
-
-            c.ease = Math.max(1.3, c.ease - 0.2);
-
-            // requeue soon
-            const pos = Math.min(3, this.sessionQueue.length);
-            this.sessionQueue.splice(pos, 0, c);
-
-            // leech protection
-            if (c.lapses >= 7 && !c.suspended) {
-                setTimeout(() => {
-                    if(confirm(`This card has been lapsed ${c.lapses} times.\n\nSuspend it?`)) {
-                        c.suspended = true;
-                        supabase.from("cards")
-                            .update({ suspended: true })
-                            .eq("id", c.id)
-                            .then();
+                    if (rating === "hard") {
+                        c.interval = 1;
+                        c.ease = 2.35;
                     }
-                }, 50);
+
+                    else if (rating === "good") {
+                        c.interval = 2;
+                        c.ease = 2.5;
+                    }
+
+                    else if (rating === "easy") {
+                        c.interval = 4;
+                        c.ease = 2.65;
+                    }
+                }
             }
 
-        }
+            // -----------------------------
+            // REVIEW CARD LOGIC
+            // -----------------------------
+            else {
 
-        else {
+                if (rating === "again") {
 
-            let multiplier = 1;
-            let easeChange = 0;
+                    c.lapses = (c.lapses || 0) + 1;
 
-            if (rating === "hard") {
-                multiplier = 1.2;
-                easeChange = -0.15;
+                    // FIX: Hard reset the interval to force relearning, don't keep 20%
+                    c.interval = 1; 
+
+                    c.ease = Math.max(1.3, c.ease - 0.2);
+
+                    // requeue soon
+                    const pos = Math.min(3, this.sessionQueue.length);
+                    this.sessionQueue.splice(pos, 0, c);
+
+                    // leech protection
+                    if (c.lapses >= 7 && !c.suspended) {
+                        setTimeout(() => {
+                            if(confirm(`This card has been lapsed ${c.lapses} times.\n\nSuspend it?`)) {
+                                c.suspended = true;
+                                
+                                // FIX: Remove zombie card from the active queue so it doesn't show up again
+                                this.sessionQueue = this.sessionQueue.filter(card => card.id !== c.id);
+                                
+                                supabase.from("cards")
+                                    .update({ suspended: true })
+                                    .eq("id", c.id)
+                                    .then();
+                            }
+                        }, 50);
+                    }
+
+                }
+
+                else {
+
+                    let multiplier = 1;
+                    let easeChange = 0;
+
+                    if (rating === "hard") {
+                        multiplier = 1.2;
+                        easeChange = -0.15;
+                    }
+
+                    if (rating === "good") {
+                        multiplier = c.ease;
+                        easeChange = 0;
+                    }
+
+                    if (rating === "easy") {
+                        multiplier = c.ease * 1.15;
+                        easeChange = 0.15;
+                    }
+
+                    let nextInterval = Math.round((c.interval + 1) * multiplier);
+
+                    // ensure interval grows
+                    if (nextInterval <= c.interval) {
+                        nextInterval = c.interval + 1;
+                    }
+
+                    c.interval = nextInterval;
+                    c.ease = Math.max(1.3, c.ease + easeChange);
+                }
             }
 
-            if (rating === "good") {
-                multiplier = c.ease;
-                easeChange = 0;
+            // -----------------------------
+            // DUE DATE
+            // -----------------------------
+            const due = new Date();
+            due.setHours(0,0,0,0);
+            due.setDate(due.getDate() + c.interval);
+
+            c.due_date = due.toLocaleDateString('en-CA');
+            c.last_reviewed = today;
+
+            // -----------------------------
+            // SAVE REVIEW
+            // -----------------------------
+            this.reviewBuffer.push({
+                cardid: c.id,
+                rating,
+                timestamp: nowIso,
+                reps: c.reps,
+                lapses: c.lapses,
+                interval: c.interval,
+                ease: c.ease,
+                review_type: wasNew ? "new" : "review"
+            });
+
+            // remove current card
+            this.sessionQueue.splice(this.currentIndex, 1);
+
+            if (this.reviewBuffer.length >= 5) {
+                this.saveProgress();
             }
 
-            if (rating === "easy") {
-                multiplier = c.ease * 1.15;
-                easeChange = 0.15;
-            }
-
-            let nextInterval = Math.round((c.interval + 1) * multiplier);
-
-            // ensure interval grows
-            if (nextInterval <= c.interval) {
-                nextInterval = c.interval + 1;
-            }
-
-            c.interval = nextInterval;
-            c.ease = Math.max(1.3, c.ease + easeChange);
-        }
-    }
-
-    // -----------------------------
-    // DUE DATE
-    // -----------------------------
-    const due = new Date();
-    due.setHours(0,0,0,0);
-    due.setDate(due.getDate() + c.interval);
-
-    c.due_date = due.toLocaleDateString('en-CA');
-    c.last_reviewed = today;
-
-    // -----------------------------
-    // SAVE REVIEW
-    // -----------------------------
-    this.reviewBuffer.push({
-        cardid: c.id,
-        rating,
-        timestamp: nowIso,
-        reps: c.reps,
-        lapses: c.lapses,
-        interval: c.interval,
-        ease: c.ease,
-        review_type: wasNew ? "new" : "review"
-    });
-
-    // remove current card
-    this.sessionQueue.splice(this.currentIndex, 1);
-
-    if (this.reviewBuffer.length >= 5) {
-        this.saveProgress();
-    }
-
-    this.resetCard();
-},
+            this.resetCard();
+        },
         speakTTS() {
             if(!this.currentCard || this.isFlipped) return;
             // Strip text in brackets like "aardig (adj)" -> "aardig"
@@ -1108,19 +1112,27 @@ async rate(rating) {
                 { ...commonOpts, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'] }
             );
             
-            // 3. Activity (Day)
+            // 3. Activity (Day) - FIX: Use a Set to track unique new cards
             const today = new Date(); const m = today.getMonth();
             const map = new Map();
             for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) {
-                 map.set(d.toLocaleDateString('en-CA'), {new:0, rev:0, d:new Date(d)});
+                 map.set(d.toLocaleDateString('en-CA'), {newSet: new Set(), rev:0, d:new Date(d)});
             }
             this.reviewHistory.forEach(h => {
                 const k = new Date(h.timestamp).toLocaleDateString('en-CA');
-                if(map.has(k)) h.review_type==='new' ? map.get(k).new++ : map.get(k).rev++;
+                if(map.has(k)) {
+                    if(h.review_type === 'new') {
+                        map.get(k).newSet.add(h.cardid);
+                    } else {
+                        map.get(k).rev++;
+                    }
+                }
             });
             const d2 = new google.visualization.DataTable();
-            d2.addColumn('date','Date'); d2.addColumn('number','New'); d2.addColumn('number','Rev');
-            for(const v of map.values()) d2.addRow([v.d, v.new, v.rev]);
+            d2.addColumn('date','Date'); d2.addColumn('number','New Cards'); d2.addColumn('number','Reviews');
+            for(const v of map.values()) {
+                d2.addRow([v.d, v.newSet.size, v.rev]);
+            }
             new google.visualization.ColumnChart(document.getElementById('chart-div')).draw(d2, {
                 ...commonOpts, 
                 isStacked:true, 
@@ -1128,9 +1140,11 @@ async rate(rating) {
                 bar:{groupWidth:'90%'}
             });
 
-            // 4. Mastery History (Completely patched for DST safety)
+            // 4. Mastery History - FIX: Update the virtual deck state over time to map historical progression
             const cardMap = new Map();
-            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:c.type, ivl:c.interval||0}); });
+            
+            // Start everyone as 'new' for historical calculation purposes
+            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status: 'new', ivl: 0}); }); 
             
             const history = [...this.reviewHistory].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
             const dailyStats = [];
@@ -1147,7 +1161,18 @@ async rate(rating) {
                 const nextDay = new Date(loopDate);
                 nextDay.setDate(nextDay.getDate() + 1);
                 
+                // Process events for the current loopDate
                 while(idx < history.length && new Date(history[idx].timestamp) < nextDay) {
+                    const event = history[idx];
+                    let status = 'review';
+                    
+                    // If it was new and they failed, it hasn't graduated yet
+                    if (event.review_type === 'new' && event.rating === 'again') {
+                        status = 'new';
+                    }
+                    
+                    // Update state in virtual deck
+                    cardMap.set(event.cardid, { status: status, ivl: event.interval || 0 });
                     idx++;
                 }
                 
