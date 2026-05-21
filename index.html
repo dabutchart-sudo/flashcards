@@ -715,30 +715,27 @@ const app = createApp({
         },
         // --- HELPER FOR RETENTION LOGIC ---
         // Accept a 'dateToCheck' argument (YYYY-MM-DD string)
-        getAdjustedMaxNew(dateToCheck) {
-            const rawLimit = parseInt(this.settingsMaxNew || 10);
-            const threshold = parseInt(this.settingsRetentionThreshold || 0);
+getAdjustedMaxNew(dateToCheck) {
+    const rawLimit = parseInt(this.settingsMaxNew || 10);
+    const threshold = parseInt(this.settingsRetentionThreshold || 0);
 
-            // If feature disabled (0), return normal limit
-            if (threshold === 0) return rawLimit;
+    if (threshold === 0) return rawLimit;
 
-            // Filter history for the SPECIFIC DATE (Safely parse timestamp)
-            const dayReviews = this.reviewHistory.filter(r => 
-                new Date(r.timestamp).toLocaleDateString('en-CA') === dateToCheck
-            );
+    // FIX: Extract the YYYY-MM-DD directly from the UTC timestamp string
+    const dayReviews = this.reviewHistory.filter(r => {
+        if (!r.timestamp) return false;
+        return r.timestamp.slice(0, 10) === dateToCheck;
+    });
 
-            // If no reviews on that date, default to allowing new cards
-            if (dayReviews.length === 0) return rawLimit;
+    if (dayReviews.length === 0) return rawLimit;
 
-            // Calculate Pass Rate
-            const passed = dayReviews.filter(r => r.rating !== 'again').length;
-            const rate = (passed / dayReviews.length) * 100;
+    const passed = dayReviews.filter(r => r.rating !== 'again').length;
+    const rate = (passed / dayReviews.length) * 100;
 
-            // If rate is strictly less than threshold, limit is 0
-            if (rate < threshold) return 0;
+    if (rate < threshold) return 0;
 
-            return rawLimit;
-        },
+    return rawLimit;
+},
         startSession() {
             const todayD = new Date();
             const today = todayD.toLocaleDateString('en-CA');
