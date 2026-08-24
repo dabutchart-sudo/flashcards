@@ -214,6 +214,8 @@
         .hint-image { max-width: 100%; max-height: 200px; border-radius: 12px; object-fit: contain; background: #f8f8f8; }
 
         /* Interaction Buttons */
+        .copy-btn { background: none; border: none; font-size: 2.2rem; cursor: pointer; z-index: 10; padding: 5px; }
+        .copy-toast { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); background: #1A1A1A; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 1.4rem; font-weight: 700; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); pointer-events: none; }
         .tts-btn { position: absolute; bottom: 15px; left: 15px !important; right: auto !important; background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .hint-btn { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .edit-card-btn { position: absolute; bottom: 15px; right: 15px; background: #eee; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; font-size: 1.3rem; cursor: pointer; z-index: 10; }
@@ -287,6 +289,8 @@
 
     <div id="app-container">
         
+        <div v-if="showCopyToast" class="copy-toast">Copied!</div>
+        
         <div id="screen-menu" class="screen" :class="{ active: !loading.show && currentScreen === 'menu' }">
             <div class="app-header">
                 <div class="header-title">🇳🇱 Dutch Flashcards 🇬🇧</div>
@@ -331,6 +335,7 @@
                     <div class="face front">
                         <div class="face-header">
                             <span class="lang-flag">🇳🇱</span>
+                            <button class="copy-btn" @click.stop="copyCardText">📋</button>
                             <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                         </div>
                         <div class="face-content">
@@ -349,6 +354,7 @@
                     <div class="face back">
                         <div class="face-header">
                             <span class="lang-flag">🇬🇧</span>
+                            <button class="copy-btn" @click.stop="copyCardText">📋</button>
                             <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                         </div>
                         <div class="face-content">
@@ -579,6 +585,7 @@ const app = createApp({
             disableTransition: false,
             sessionStarted: false,
             showHint: false, 
+            showCopyToast: false,
             
             // Edit Card State
             editForm: { id: null, dutch: '', english: '', dutch_sentence: '', english_sentence: '', image_url: '' },
@@ -774,6 +781,19 @@ getAdjustedMaxNew(dateToCheck) {
             this.isFlipped = false;
             this.showHint = false;
             this.$nextTick(() => setTimeout(() => this.disableTransition=false, 50));
+        },
+        async copyCardText() {
+            if (!this.currentCard) return;
+            const textToCopy = `${this.currentCard.dutch} (${this.currentCard.english})`;
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                this.showCopyToast = true;
+                setTimeout(() => {
+                    this.showCopyToast = false;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
         },
         flipCard() { this.isFlipped = !this.isFlipped; },
         async rate(rating) {
