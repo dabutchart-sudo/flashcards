@@ -1,6 +1,5 @@
-
 // App Version
-export const APP_VERSION = "2.0";
+export const APP_VERSION = "3.0";
 
 // Your Supabase Project URL
 export const SUPABASE_URL = "https://dntitlrtvkgisxwqjxch.supabase.co";
@@ -13,3 +12,6 @@ export const UNSPLASH_ACCESS_KEY = "roF6le_ubyOne6ys-UrkyHpl0afaLEvVeiNOq9ifsnM"
 
 // Daily max new card config key
 export const CONFIG_MAX_NEW = "dfc_max_new";
+
+// Gemini API Key
+export const GEMINI_API_KEY = "AQ.Ab8RN6JOQJH4ywciDCe4_jpXIzN8SIYngirnSFNAxwWwyj9JYA";
