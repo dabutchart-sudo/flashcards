@@ -289,6 +289,53 @@
             overflow: hidden;
         }
 
+        /* Report Enhancements */
+        .report-summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .report-stat {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            padding: 14px;
+            min-height: 88px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .report-stat-label { font-size: 1.25rem; color: var(--text-sub); font-weight: 700; margin-bottom: 4px; }
+        .report-stat-value { font-size: 2.5rem; font-weight: 800; line-height: 1.05; }
+        .report-stat-sub { font-size: 1.15rem; color: var(--text-sub); margin-top: 5px; }
+        .report-range { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 12px; }
+        .report-range-btn {
+            border: 1px solid #E3E7EA;
+            background: var(--bg-card);
+            color: var(--text-sub);
+            border-radius: 10px;
+            padding: 10px 4px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .report-range-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .chart-subheading { font-size: 1.2rem; color: var(--text-sub); margin-bottom: 4px; }
+        .rating-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 12px; }
+        .rating-pill { text-align: center; background: #F8F9FA; border-radius: 10px; padding: 10px 4px; }
+        .rating-pill-value { font-size: 1.8rem; font-weight: 800; }
+        .rating-pill-label { font-size: 1.05rem; color: var(--text-sub); font-weight: 700; margin-top: 3px; }
+        .trouble-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid #EEF0F2; cursor: pointer; }
+        .trouble-row:first-of-type { border-top: none; }
+        .trouble-main { min-width: 0; flex: 1; }
+        .trouble-word { font-size: 1.55rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .trouble-english { font-size: 1.15rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .trouble-metric { text-align: right; flex-shrink: 0; }
+        .trouble-metric strong { display: block; font-size: 1.45rem; }
+        .trouble-metric span { font-size: 1.05rem; color: var(--text-sub); }
+        .report-empty { color: var(--text-sub); font-size: 1.3rem; padding: 14px 0 4px; text-align: center; }
+
         .hidden { display: none !important; }
         .center-msg { text-align: center; color: black; margin-top: 20px; font-size: 2rem; }
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #F4F6F8; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -567,25 +614,84 @@
                 <button class="btn-icon" @click="nav('menu')">🏠</button> 
             </div>
             <div class="content-scroll">
+
+                <div class="report-summary-grid">
+                    <div class="report-stat">
+                        <div class="report-stat-label">Today</div>
+                        <div class="report-stat-value">{{ reportSummary.todayReviews }}</div>
+                        <div class="report-stat-sub">reviews completed</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Retention</div>
+                        <div class="report-stat-value">{{ reportSummary.retentionDisplay }}</div>
+                        <div class="report-stat-sub">{{ reportRangeLabel }}</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Mastered</div>
+                        <div class="report-stat-value">{{ reportSummary.mastered }}</div>
+                        <div class="report-stat-sub">{{ reportSummary.masteredPercent }}% of active cards</div>
+                    </div>
+                    <div class="report-stat">
+                        <div class="report-stat-label">Study Streak</div>
+                        <div class="report-stat-value">{{ reportSummary.streak }} day<span v-if="reportSummary.streak !== 1">s</span></div>
+                        <div class="report-stat-sub">{{ reportSummary.daysStudied30 }} of last 30 days</div>
+                    </div>
+                </div>
+
+                <div class="report-range">
+                    <button v-for="range in reportRanges" :key="range.value" class="report-range-btn" :class="{active: reportRange === range.value}" @click="setReportRange(range.value)">{{ range.label }}</button>
+                </div>
                 
                 <div class="container-elevated">
-                    <div class="chart-heading">Retention Rate (% Correct)</div>
+                    <div class="chart-heading">Retention Rate</div>
+                    <div class="chart-subheading">{{ reportSummary.retentionDisplay }} correct over {{ reportRangeLabel.toLowerCase() }}</div>
                     <div id="retention-chart-div" class="chart-wrapper"></div>
                 </div>
 
                 <div class="container-elevated">
                     <div class="chart-heading">Mastery History</div>
+                    <div class="chart-subheading">{{ reportSummary.mastered }} of {{ reportSummary.activeCards }} active cards mastered</div>
                     <div id="mastery-history-chart" class="chart-wrapper"></div>
                 </div>
                 
                 <div class="container-elevated">
+                    <div class="chart-heading">Activity</div>
+                    <div class="chart-subheading">New cards and review activity</div>
+                    <div id="chart-div" class="chart-wrapper"></div>
+                </div>
+
+                <div class="container-elevated">
+                    <div class="chart-heading">Rating Breakdown</div>
+                    <div class="chart-subheading">How you rated cards over {{ reportRangeLabel.toLowerCase() }}</div>
+                    <div class="rating-grid">
+                        <div class="rating-pill"><div class="rating-pill-value">{{ reportRatingBreakdown.again }}%</div><div class="rating-pill-label">Again</div></div>
+                        <div class="rating-pill"><div class="rating-pill-value">{{ reportRatingBreakdown.hard }}%</div><div class="rating-pill-label">Hard</div></div>
+                        <div class="rating-pill"><div class="rating-pill-value">{{ reportRatingBreakdown.good }}%</div><div class="rating-pill-label">Good</div></div>
+                        <div class="rating-pill"><div class="rating-pill-value">{{ reportRatingBreakdown.easy }}%</div><div class="rating-pill-label">Easy</div></div>
+                    </div>
+                </div>
+
+                <div class="container-elevated">
+                    <div class="chart-heading">Trouble Words</div>
+                    <div class="chart-subheading">Cards with the most Again ratings over {{ reportRangeLabel.toLowerCase() }}</div>
+                    <div v-if="reportTroubleWords.length">
+                        <div v-for="item in reportTroubleWords" :key="item.card.id" class="trouble-row" @click="startEditCard(item.card, 'report')">
+                            <div class="trouble-main">
+                                <div class="trouble-word">{{ item.card.dutch }}</div>
+                                <div class="trouble-english">{{ item.card.english }}</div>
+                            </div>
+                            <div class="trouble-metric">
+                                <strong>{{ item.again }}</strong>
+                                <span>Again · {{ item.retention }}% correct</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="report-empty">No troublesome review cards in this period.</div>
+                </div>
+
+                <div class="container-elevated">
                     <div class="chart-heading">Current Status</div>
                     <div id="status-chart-div" class="chart-wrapper"></div>
-                </div>
-                
-                <div class="container-elevated">
-                    <div class="chart-heading">Activity Log</div>
-                    <div id="chart-div" class="chart-wrapper"></div>
                 </div>
 
             </div>
@@ -685,7 +791,14 @@ const app = createApp({
             wordFilter: 'all',
             sortCol: 'dutch',
             settingsMaxNew: '10',
-            settingsRetentionThreshold: '0' // Default to 0 (Disabled)
+            settingsRetentionThreshold: '0', // Default to 0 (Disabled)
+            reportRange: '30',
+            reportRanges: [
+                { value: '7', label: '7 days' },
+                { value: '30', label: '30 days' },
+                { value: '90', label: '90 days' },
+                { value: 'all', label: 'All' }
+            ]
         };
     },
     computed: {
@@ -717,6 +830,90 @@ const app = createApp({
                 tomorrowNew: maxNewTomorrow,
                 tomorrowReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) === tomorrow).length
             };
+        },
+        reportRangeStart() {
+            if (this.reportRange === 'all') return null;
+            const start = new Date();
+            start.setHours(0,0,0,0);
+            start.setDate(start.getDate() - (parseInt(this.reportRange) - 1));
+            return start;
+        },
+        reportRangeLabel() {
+            if (this.reportRange === 'all') return 'All time';
+            return `Last ${this.reportRange} days`;
+        },
+        reportFilteredHistory() {
+            const start = this.reportRangeStart;
+            return this.reviewHistory.filter(h => {
+                if (!h.timestamp) return false;
+                return !start || new Date(h.timestamp) >= start;
+            });
+        },
+        reportSummary() {
+            const today = new Date().toLocaleDateString('en-CA');
+            const todayReviews = this.reviewHistory.filter(h => h.timestamp && new Date(h.timestamp).toLocaleDateString('en-CA') === today).length;
+            const retentionHistory = this.reportFilteredHistory.filter(h => h.review_type !== 'new');
+            const correct = retentionHistory.filter(h => h.rating !== 'again').length;
+            const retention = retentionHistory.length ? Math.round((correct / retentionHistory.length) * 100) : null;
+            const active = this.allCards.filter(c => !c.suspended);
+            const mastered = active.filter(c => c.type !== 'new' && Number(c.interval || 0) > 21).length;
+            const masteredPercent = active.length ? Math.round((mastered / active.length) * 100) : 0;
+
+            const studiedDates = new Set(this.reviewHistory.filter(h => h.timestamp).map(h => new Date(h.timestamp).toLocaleDateString('en-CA')));
+            let streak = 0;
+            const cursor = new Date();
+            cursor.setHours(0,0,0,0);
+            // If today has no activity yet, allow the streak to continue from yesterday.
+            if (!studiedDates.has(cursor.toLocaleDateString('en-CA'))) cursor.setDate(cursor.getDate() - 1);
+            while (studiedDates.has(cursor.toLocaleDateString('en-CA'))) {
+                streak++;
+                cursor.setDate(cursor.getDate() - 1);
+            }
+            let daysStudied30 = 0;
+            const day = new Date();
+            day.setHours(0,0,0,0);
+            for (let i=0; i<30; i++) {
+                if (studiedDates.has(day.toLocaleDateString('en-CA'))) daysStudied30++;
+                day.setDate(day.getDate() - 1);
+            }
+
+            return {
+                todayReviews,
+                retentionDisplay: retention === null ? '—' : `${retention}%`,
+                retention,
+                activeCards: active.length,
+                mastered,
+                masteredPercent,
+                streak,
+                daysStudied30
+            };
+        },
+        reportRatingBreakdown() {
+            const counts = { again:0, hard:0, good:0, easy:0 };
+            this.reportFilteredHistory.forEach(h => { if (counts[h.rating] !== undefined) counts[h.rating]++; });
+            const total = Object.values(counts).reduce((a,b) => a+b, 0);
+            if (!total) return counts;
+            return {
+                again: Math.round(counts.again / total * 100),
+                hard: Math.round(counts.hard / total * 100),
+                good: Math.round(counts.good / total * 100),
+                easy: Math.round(counts.easy / total * 100)
+            };
+        },
+        reportTroubleWords() {
+            const byCard = new Map();
+            this.reportFilteredHistory.forEach(h => {
+                if (h.review_type === 'new') return;
+                if (!byCard.has(h.cardid)) byCard.set(h.cardid, { total:0, again:0 });
+                const s = byCard.get(h.cardid);
+                s.total++;
+                if (h.rating === 'again') s.again++;
+            });
+            return Array.from(byCard.entries()).map(([id, s]) => {
+                const card = this.allCards.find(c => Number(c.id) === Number(id));
+                if (!card || card.suspended || s.again === 0) return null;
+                return { card, again:s.again, total:s.total, retention:Math.round(((s.total - s.again) / s.total) * 100) };
+            }).filter(Boolean).sort((a,b) => b.again - a.again || a.retention - b.retention || b.total - a.total).slice(0,5);
         },
         currentCard() { return this.sessionQueue[this.currentIndex] || null; },
         progressPercent() { return this.sessionTotal ? ((this.sessionTotal - this.sessionQueue.length) / this.sessionTotal) * 100 : 0; },
@@ -1330,18 +1527,26 @@ ${JSON.stringify(cards, null, 2)}`;
             this.exitImageSelector();
         },
 
+        setReportRange(range) {
+            this.reportRange = range;
+            this.$nextTick(() => this.drawCharts());
+        },
+
         drawCharts() {
+            if (!window.google || !google.visualization) return;
+
             const commonOpts = { 
                 chartArea: { width: '85%', height: '70%', top: 20 }, 
                 legend: { position: 'bottom' },
                 backgroundColor: 'transparent'
             };
+            const startDate = this.reportRangeStart;
+            const filteredHistory = this.reportFilteredHistory;
 
-            // 1. Retention Rate Chart
+            // 1. Retention Rate Chart - review cards only.
             const retMap = new Map();
-            // Iterate history, skipping 'new' cards (learning phase)
-            this.reviewHistory.forEach(h => {
-                if(h.review_type === 'new') return; 
+            filteredHistory.forEach(h => {
+                if(h.review_type === 'new' || !h.timestamp) return; 
                 const k = new Date(h.timestamp).toLocaleDateString('en-CA');
                 if(!retMap.has(k)) retMap.set(k, { pass: 0, fail: 0 });
                 const d = retMap.get(k);
@@ -1352,124 +1557,107 @@ ${JSON.stringify(cards, null, 2)}`;
             const d4 = new google.visualization.DataTable();
             d4.addColumn('date', 'Date');
             d4.addColumn('number', 'Retention %');
-            
-            const retRows = [];
-            const sortedKeys = Array.from(retMap.keys()).sort();
-            sortedKeys.forEach(k => {
+            Array.from(retMap.keys()).sort().forEach(k => {
                 const d = retMap.get(k);
                 const total = d.pass + d.fail;
-                const rate = total ? (d.pass / total) * 100 : 0;
                 const [y, m, day] = k.split('-').map(Number);
-                retRows.push([new Date(y, m - 1, day), rate]);
+                d4.addRow([new Date(y, m - 1, day), total ? (d.pass / total) * 100 : 0]);
             });
-            d4.addRows(retRows);
-
             new google.visualization.LineChart(document.getElementById('retention-chart-div')).draw(d4, {
                 ...commonOpts,
-                vAxis: { minValue: 0, maxValue: 100, format: '#\'%\'' }, 
+                vAxis: { minValue: 0, maxValue: 100, format: '#\'%' }, 
                 colors: ['#2EC4B6'],
                 legend: { position: 'none' },
                 pointSize: 5
             });
 
-            // 2. Mastery Status
+            // 2. Current Mastery Status.
             const stats = { new:0, learning:0, reviewing:0, mastered:0 };
             this.allCards.forEach(c => {
                 if(c.suspended) return;
-                if(c.type==='new') stats.new++;
-                else if(c.interval <= 3) stats.learning++;
-                else if(c.interval <= 21) stats.reviewing++;
+                if(c.type === 'new') stats.new++;
+                else if(Number(c.interval || 0) <= 3) stats.learning++;
+                else if(Number(c.interval || 0) <= 21) stats.reviewing++;
                 else stats.mastered++;
             });
             new google.visualization.PieChart(document.getElementById('status-chart-div')).draw(
                 google.visualization.arrayToDataTable([['S','C'],['New',stats.new],['Lrn',stats.learning],['Rev',stats.reviewing],['Mst',stats.mastered]]),
                 { ...commonOpts, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'] }
             );
-            
-            // 3. Activity (Day) - FIX: Use a Set to track unique new cards
-            const today = new Date(); const m = today.getMonth();
-            const map = new Map();
-            for(let d=new Date(today.getFullYear(), m, 1); d.getMonth()===m; d.setDate(d.getDate()+1)) {
-                 map.set(d.toLocaleDateString('en-CA'), {newSet: new Set(), rev:0, d:new Date(d)});
+
+            // 3. Activity for selected range.
+            const activityMap = new Map();
+            let activityStart;
+            if (startDate) {
+                activityStart = new Date(startDate);
+            } else if (this.reviewHistory.length) {
+                activityStart = new Date(Math.min(...this.reviewHistory.filter(h => h.timestamp).map(h => new Date(h.timestamp).getTime())));
+                activityStart.setHours(0,0,0,0);
+            } else {
+                activityStart = new Date();
+                activityStart.setHours(0,0,0,0);
             }
-            this.reviewHistory.forEach(h => {
+            const activityEnd = new Date();
+            activityEnd.setHours(0,0,0,0);
+            for(let d = new Date(activityStart); d <= activityEnd; d.setDate(d.getDate()+1)) {
+                activityMap.set(d.toLocaleDateString('en-CA'), {newSet:new Set(), rev:0, d:new Date(d)});
+            }
+            filteredHistory.forEach(h => {
+                if (!h.timestamp) return;
                 const k = new Date(h.timestamp).toLocaleDateString('en-CA');
-                if(map.has(k)) {
-                    if(h.review_type === 'new') {
-                        map.get(k).newSet.add(h.cardid);
-                    } else {
-                        map.get(k).rev++;
-                    }
+                if(activityMap.has(k)) {
+                    if(h.review_type === 'new') activityMap.get(k).newSet.add(h.cardid);
+                    else activityMap.get(k).rev++;
                 }
             });
             const d2 = new google.visualization.DataTable();
             d2.addColumn('date','Date'); d2.addColumn('number','New Cards'); d2.addColumn('number','Reviews');
-            for(const v of map.values()) {
-                d2.addRow([v.d, v.newSet.size, v.rev]);
-            }
+            for(const v of activityMap.values()) d2.addRow([v.d, v.newSet.size, v.rev]);
             new google.visualization.ColumnChart(document.getElementById('chart-div')).draw(d2, {
-                ...commonOpts, 
-                isStacked:true, 
-                colors:['#FF9F1C','#1a80d9'], 
-                bar:{groupWidth:'90%'}
+                ...commonOpts, isStacked:true, colors:['#FF9F1C','#1a80d9'], bar:{groupWidth:'90%'}
             });
 
-            // 4. Mastery History - FIX: Update the virtual deck state over time to map historical progression
+            // 4. Mastery History. Process all prior events so the first displayed day has a true starting state.
             const cardMap = new Map();
-            
-            // Start everyone as 'new' for historical calculation purposes
-            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status: 'new', ivl: 0}); }); 
-            
-            const history = [...this.reviewHistory].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+            this.allCards.forEach(c => { if(!c.suspended) cardMap.set(c.id, {status:'new', ivl:0}); });
+            const history = [...this.reviewHistory].filter(h => h.timestamp).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
             const dailyStats = [];
-            
-            let loopDate = history.length ? new Date(history[0].timestamp) : new Date();
-            loopDate.setHours(0,0,0,0);
-            
+            let historyStart = history.length ? new Date(history[0].timestamp) : new Date();
+            historyStart.setHours(0,0,0,0);
+            const displayStart = startDate && startDate > historyStart ? new Date(startDate) : new Date(historyStart);
             const endDate = new Date();
             endDate.setHours(0,0,0,0);
-            
+            let loopDate = new Date(historyStart);
             let idx = 0;
-            
+
             while(loopDate <= endDate) {
                 const nextDay = new Date(loopDate);
                 nextDay.setDate(nextDay.getDate() + 1);
-                
-                // Process events for the current loopDate
                 while(idx < history.length && new Date(history[idx].timestamp) < nextDay) {
                     const event = history[idx];
                     let status = 'review';
-                    
-                    // If it was new and they failed, it hasn't graduated yet
-                    if (event.review_type === 'new' && event.rating === 'again') {
-                        status = 'new';
-                    }
-                    
-                    // Update state in virtual deck
-                    cardMap.set(event.cardid, { status: status, ivl: event.interval || 0 });
+                    if(event.review_type === 'new' && event.rating === 'again') status = 'new';
+                    cardMap.set(event.cardid, {status, ivl:Number(event.interval || 0)});
                     idx++;
                 }
-                
-                let s = {n:0, l:0, r:0, m:0};
-                for(const st of cardMap.values()) {
-                    if(st.status==='new') s.n++;
-                    else if(st.ivl<=3) s.l++;
-                    else if(st.ivl<=21) s.r++;
-                    else s.m++;
+                if(loopDate >= displayStart) {
+                    const st = {n:0,l:0,r:0,m:0};
+                    for(const c of cardMap.values()) {
+                        if(c.status === 'new') st.n++;
+                        else if(c.ivl <= 3) st.l++;
+                        else if(c.ivl <= 21) st.r++;
+                        else st.m++;
+                    }
+                    dailyStats.push([new Date(loopDate), st.n, st.l, st.r, st.m]);
                 }
-                
-                dailyStats.push([new Date(loopDate), s.n, s.l, s.r, s.m]);
                 loopDate.setDate(loopDate.getDate() + 1);
             }
-            
+
             const d3 = new google.visualization.DataTable();
             d3.addColumn('date','Date'); d3.addColumn('number','New'); d3.addColumn('number','Lrn'); d3.addColumn('number','Rev'); d3.addColumn('number','Mst');
             d3.addRows(dailyStats);
             new google.visualization.AreaChart(document.getElementById('mastery-history-chart')).draw(d3, {
-                ...commonOpts, 
-                isStacked:true, 
-                colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], 
-                areaOpacity:0.9
+                ...commonOpts, isStacked:true, colors:['#ADB5BD','#FFCA3A','#1982C4','#8AC926'], areaOpacity:0.9
             });
         }
     }
