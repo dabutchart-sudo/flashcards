@@ -508,6 +508,16 @@
                     <button class="btn-large btn-outline" v-if="sentenceQueue.length" @click="startSentenceQueueEdit">Edit First Card</button>
                 </div>
 
+                <div class="container-elevated">
+                    <div class="queue-word">Add words to queue</div>
+                    <div class="queue-sub" style="margin:6px 0 10px;">Paste one word per line. Plain Dutch words and copied entries such as <strong>aarzelen (to hesitate)</strong> are both accepted. This only adds cards to the sentence queue and does not affect review scheduling.</div>
+                    <textarea class="ai-paste-box" style="min-height:120px;" v-model="sentenceWordInput" placeholder="ziel
+wang
+heffen (to lift)"></textarea>
+                    <button class="btn-large" @click="addPastedWordsToSentenceQueue">Add to Queue</button>
+                    <div v-if="sentenceWordStatus" class="ai-import-status" :style="{ color: sentenceWordError ? 'var(--color-again)' : 'var(--text-sub)' }">{{ sentenceWordStatus }}</div>
+                </div>
+
                 <div v-if="showAiImport" class="container-elevated">
                     <div class="queue-word">Import ChatGPT results</div>
                     <div class="queue-sub" style="margin:6px 0 10px;">Paste the complete JSON response from ChatGPT below. The importer checks card IDs and sentence pairs before showing any choices.</div>
@@ -772,6 +782,9 @@ const app = createApp({
             aiResults: [],
             aiImportStatus: '',
             aiImportError: false,
+            sentenceWordInput: '',
+            sentenceWordStatus: '',
+            sentenceWordError: false,
             
             // Edit Card State
             editForm: { id: null, dutch: '', english: '', dutch_sentence: '', english_sentence: '', image_url: '' },
@@ -1105,6 +1118,97 @@ getAdjustedMaxNew(dateToCheck) {
             this.persistSentenceQueue();
             this.showCopyToast = true;
             setTimeout(() => { this.showCopyToast = false; }, 1200);
+        },
+        addPastedWordsToSentenceQueue() {
+            this.sentenceWordError = false;
+            this.sentenceWordStatus = '';
+
+            const raw = (this.sentenceWordInput || '').trim();
+            if (!raw) {
+                this.sentenceWordError = true;
+                this.sentenceWordStatus = 'Paste at least one word first.';
+                return;
+            }
+
+            const entries = raw.split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(Boolean)
+                .map(line => line
+                    .replace(/^[-•*]+\s*/, '')
+                    .replace(/^\d+[.)]\s*/, '')
+                    .trim());
+
+            const normalize = value => String(value || '')
+                .normalize('NFC')
+                .trim()
+                .toLocaleLowerCase('nl-NL');
+
+            const byDutch = new Map();
+            for (const card of this.allCards) {
+                const key = normalize(card.dutch);
+                if (!key) continue;
+                if (!byDutch.has(key)) byDutch.set(key, []);
+                byDutch.get(key).push(card);
+            }
+
+            const queueIds = new Set(this.sentenceQueue.map(Number));
+            const added = [];
+            const alreadyQueued = [];
+            const notFound = [];
+            const ambiguous = [];
+
+            for (const entry of entries) {
+                // Accept either "woord" or the app's copied format "woord (English meaning)".
+                const dutchOnly = entry.replace(/\s*\([^()]*\)\s*$/, '').trim();
+                const key = normalize(dutchOnly);
+                if (!key) continue;
+                const matches = byDutch.get(key) || [];
+
+                if (!matches.length) {
+                    notFound.push(dutchOnly);
+                    continue;
+                }
+
+                if (matches.length > 1) {
+                    // If the pasted line contains an English meaning, use it to disambiguate duplicate Dutch entries.
+                    const meaningMatch = entry.match(/\(([^()]*)\)\s*$/);
+                    const englishKey = meaningMatch ? normalize(meaningMatch[1]) : '';
+                    const narrowed = englishKey ? matches.filter(card => normalize(card.english) === englishKey) : matches;
+                    if (narrowed.length !== 1) {
+                        ambiguous.push(dutchOnly);
+                        continue;
+                    }
+                    matches.splice(0, matches.length, narrowed[0]);
+                }
+
+                const card = matches[0];
+                const id = Number(card.id);
+                if (queueIds.has(id)) {
+                    alreadyQueued.push(card.dutch);
+                } else {
+                    this.sentenceQueue.push(id);
+                    queueIds.add(id);
+                    added.push(card.dutch);
+                }
+            }
+
+            if (added.length) this.persistSentenceQueue();
+
+            const parts = [];
+            if (added.length) parts.push(`Added ${added.length} card${added.length === 1 ? '' : 's'} to the sentence queue.`);
+            if (alreadyQueued.length) parts.push(`${alreadyQueued.length} already queued.`);
+            if (notFound.length) parts.push(`Not found: ${notFound.join(', ')}.`);
+            if (ambiguous.length) parts.push(`Multiple matching cards: ${ambiguous.join(', ')}.`);
+
+            this.sentenceWordError = !added.length && (notFound.length || ambiguous.length) > 0;
+            this.sentenceWordStatus = parts.join(' ') || 'No usable words were found in the pasted text.';
+
+            if (added.length) {
+                this.sentenceWordInput = '';
+                this.toastMessage = `${added.length} added to queue`;
+                this.showCopyToast = true;
+                setTimeout(() => { this.showCopyToast = false; }, 1500);
+            }
         },
         async copySentencePrompt() {
             if (!this.sentenceQueueCards.length) return;
