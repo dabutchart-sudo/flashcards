@@ -216,6 +216,15 @@
         /* Interaction Buttons */
         .copy-btn { background: none; border: none; font-size: 2.2rem; cursor: pointer; z-index: 10; padding: 5px; }
         .copy-toast { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); background: #1A1A1A; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 1.4rem; font-weight: 700; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); pointer-events: none; }
+        .sentence-flag-btn { background: none; border: none; font-size: 2.2rem; cursor: pointer; z-index: 10; padding: 5px; }
+        .sentence-flag-btn.flagged { filter: saturate(1.5); }
+        .queue-count { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 7px; border-radius:11px; background:var(--color-again); color:#fff; font-size:1.2rem; font-weight:800; margin-left:6px; }
+        .queue-card { padding:14px 0; border-bottom:1px solid #eee; }
+        .queue-word { font-size:1.8rem; font-weight:700; }
+        .queue-sub { font-size:1.3rem; color:var(--text-sub); margin-top:3px; }
+        .queue-sentence { font-size:1.4rem; color:#555; font-style:italic; margin-top:8px; line-height:1.4; }
+        .queue-actions { display:flex; gap:8px; margin-top:10px; }
+        .queue-actions button { flex:1; border:none; border-radius:10px; padding:10px; font-size:1.3rem; font-weight:700; cursor:pointer; }
         .tts-btn { position: absolute; bottom: 15px; left: 15px !important; right: auto !important; background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .hint-btn { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .edit-card-btn { position: absolute; bottom: 15px; right: 15px; background: #eee; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; font-size: 1.3rem; cursor: pointer; z-index: 10; }
@@ -289,7 +298,7 @@
 
     <div id="app-container">
         
-        <div v-if="showCopyToast" class="copy-toast">Copied!</div>
+        <div v-if="showCopyToast" class="copy-toast">{{ toastMessage }}</div>
         
         <div id="screen-menu" class="screen" :class="{ active: !loading.show && currentScreen === 'menu' }">
             <div class="app-header">
@@ -314,6 +323,7 @@
                     <button class="menu-btn" @click="nav('wordReview')"><span class="menu-icon">📚</span><span class="menu-text">Dictionary</span></button>
                     <button class="menu-btn" @click="nav('report')"><span class="menu-icon">📊</span><span class="menu-text">Report</span></button>
                     <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
+                    <button class="menu-btn" @click="nav('sentenceQueue')"><span class="menu-icon">🚩</span><span class="menu-text">Sentences <span v-if="sentenceQueue.length" class="queue-count">{{ sentenceQueue.length }}</span></span></button>
                 </div>
                 <div class="center-msg" style="font-size:1.2rem; margin-top:20px; color:#ccc;">Version {{ appVersion }}</div>
             </div>
@@ -335,7 +345,10 @@
                     <div class="face front">
                         <div class="face-header">
                             <span class="lang-flag">🇳🇱</span>
-                            <button class="copy-btn" @click.stop="copyCardText">📋</button>
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <button class="copy-btn" @click.stop="copyCardText">📋</button>
+                                <button class="sentence-flag-btn" :class="{ flagged: isCurrentCardFlagged }" @click.stop="toggleSentenceFlag(currentCard)" :title="isCurrentCardFlagged ? 'Remove from sentence queue' : 'Replace example sentence'">{{ isCurrentCardFlagged ? '🚩' : '⚐' }}</button>
+                            </div>
                             <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                         </div>
                         <div class="face-content">
@@ -354,7 +367,10 @@
                     <div class="face back">
                         <div class="face-header">
                             <span class="lang-flag">🇬🇧</span>
-                            <button class="copy-btn" @click.stop="copyCardText">📋</button>
+                            <div style="display:flex; gap:4px; align-items:center;">
+                                <button class="copy-btn" @click.stop="copyCardText">📋</button>
+                                <button class="sentence-flag-btn" :class="{ flagged: isCurrentCardFlagged }" @click.stop="toggleSentenceFlag(currentCard)" :title="isCurrentCardFlagged ? 'Remove from sentence queue' : 'Replace example sentence'">{{ isCurrentCardFlagged ? '🚩' : '⚐' }}</button>
+                            </div>
                             <span class="card-status">{{ currentCard.type === 'new' ? 'NEW' : 'REVIEW' }}</span>
                         </div>
                         <div class="face-content">
@@ -419,6 +435,32 @@
                         <div style="display:flex; gap:10px;">
                             <button style="font-size:1.5rem; border:none; background:none;" @click="startEditCard(c, 'wordReview')">✏️</button>
                             <button style="font-size:1.5rem; border:none; background:none;" @click="toggleSuspend(c)">{{ c.suspended ? '❄️' : '🚫' }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-sentenceQueue" class="screen" :class="{ active: currentScreen === 'sentenceQueue' }">
+            <div class="app-header">
+                <div style="width:50px;"></div> <div class="header-title">Sentences</div>
+                <button class="btn-icon" @click="nav('menu')">🏠</button>
+            </div>
+            <div class="content-scroll">
+                <div class="container-elevated">
+                    <div style="font-size:1.4rem; color:var(--text-sub); margin-bottom:10px;">Cards marked for a better example sentence.</div>
+                    <button class="btn-large" :disabled="!sentenceQueue.length" @click="copySentencePrompt">Copy AI Prompt</button>
+                    <button class="btn-large btn-outline" v-if="sentenceQueue.length" @click="startSentenceQueueEdit">Edit First Card</button>
+                </div>
+                <div class="container-elevated">
+                    <div v-if="!sentenceQueue.length" class="center-msg" style="margin:10px 0;">No sentences waiting.</div>
+                    <div v-for="c in sentenceQueueCards" :key="c.id" class="queue-card">
+                        <div class="queue-word">{{ c.dutch }} <span v-if="c.partofword">({{ c.partofword }})</span></div>
+                        <div class="queue-sub">{{ c.english }}</div>
+                        <div v-if="c.dutch_sentence" class="queue-sentence">{{ c.dutch_sentence }}</div>
+                        <div class="queue-actions">
+                            <button style="background:#eee;" @click="startEditCard(c, 'sentenceQueue')">Edit</button>
+                            <button style="background:#ffebee; color:#c62828;" @click="toggleSentenceFlag(c)">Remove</button>
                         </div>
                     </div>
                 </div>
@@ -586,6 +628,9 @@ const app = createApp({
             sessionStarted: false,
             showHint: false, 
             showCopyToast: false,
+            toastMessage: 'Copied!',
+            sentenceQueue: [],
+            sentenceEditMode: false,
             
             // Edit Card State
             editForm: { id: null, dutch: '', english: '', dutch_sentence: '', english_sentence: '', image_url: '' },
@@ -644,6 +689,13 @@ const app = createApp({
             const completed = this.sessionTotal - this.sessionQueue.length;
             return `${Math.min(completed + 1, this.sessionTotal)} / ${this.sessionTotal}`; 
         },
+        sentenceQueueCards() {
+            const ids = new Set(this.sentenceQueue.map(Number));
+            return this.allCards.filter(c => ids.has(Number(c.id)));
+        },
+        isCurrentCardFlagged() {
+            return !!this.currentCard && this.sentenceQueue.map(Number).includes(Number(this.currentCard.id));
+        },
         filteredWords() {
             const today = new Date().toLocaleDateString('en-CA');
             let list = this.allCards.filter(c => {
@@ -668,6 +720,7 @@ const app = createApp({
             this.loading.msg = "Connecting...";
             this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
             this.settingsRetentionThreshold = localStorage.getItem(CONFIG_RET_THRESHOLD) || "0";
+            try { this.sentenceQueue = JSON.parse(localStorage.getItem('dutch_flashcards_sentence_queue') || '[]'); } catch(e) { this.sentenceQueue = []; }
             
             this.loading.msg = "Loading Cards...";
             let { data: cards, error: err1 } = await supabase.from("cards").select("*").range(0, 10000);
@@ -787,6 +840,7 @@ getAdjustedMaxNew(dateToCheck) {
             const textToCopy = `${this.currentCard.dutch} (${this.currentCard.english})`;
             try {
                 await navigator.clipboard.writeText(textToCopy);
+                this.toastMessage = 'Copied!';
                 this.showCopyToast = true;
                 setTimeout(() => {
                     this.showCopyToast = false;
@@ -794,6 +848,50 @@ getAdjustedMaxNew(dateToCheck) {
             } catch (err) {
                 console.error('Failed to copy text: ', err);
             }
+        },
+        persistSentenceQueue() {
+            localStorage.setItem('dutch_flashcards_sentence_queue', JSON.stringify(this.sentenceQueue));
+        },
+        toggleSentenceFlag(card) {
+            if (!card) return;
+            const id = Number(card.id);
+            const idx = this.sentenceQueue.map(Number).indexOf(id);
+            if (idx >= 0) {
+                this.sentenceQueue.splice(idx, 1);
+                this.toastMessage = 'Removed';
+            } else {
+                this.sentenceQueue.push(id);
+                this.toastMessage = 'Sentence flagged';
+            }
+            this.persistSentenceQueue();
+            this.showCopyToast = true;
+            setTimeout(() => { this.showCopyToast = false; }, 1200);
+        },
+        async copySentencePrompt() {
+            if (!this.sentenceQueueCards.length) return;
+            const words = this.sentenceQueueCards.map(c => `${c.dutch} (${c.english})`).join('\n');
+            const prompt = `Please provide 5 examples of simple Dutch sentences for each of the following words:\n\n${words}\n\nEnsure each Dutch sentence has its English translation below. This is for a flashcard app, so ensure the sentence clearly refers to the word in question. Please ensure all 5 sentences for each word are about different subjects.\n\nI do not require flashcards. Just the sentences themselves.`;
+            try {
+                await navigator.clipboard.writeText(prompt);
+                this.toastMessage = 'Prompt copied!';
+                this.showCopyToast = true;
+                setTimeout(() => { this.showCopyToast = false; }, 2000);
+            } catch (e) { console.error(e); }
+        },
+        startSentenceQueueEdit() {
+            const first = this.sentenceQueueCards[0];
+            if (!first) return;
+            this.sentenceEditMode = true;
+            this.startEditCard(first, 'sentenceQueue');
+        },
+        openNextSentenceQueueCard() {
+            const next = this.sentenceQueueCards[0];
+            if (!next) {
+                this.sentenceEditMode = false;
+                this.currentScreen = 'sentenceQueue';
+                return;
+            }
+            this.startEditCard(next, 'sentenceQueue');
         },
         flipCard() { this.isFlipped = !this.isFlipped; },
         async rate(rating) {
@@ -997,7 +1095,22 @@ getAdjustedMaxNew(dateToCheck) {
             this.cardToEdit.image_url = this.editForm.image_url;
 
             this.loading.show = false;
-            this.currentScreen = this.editReturnScreen;
+
+            if (this.editReturnScreen === 'sentenceQueue') {
+                const idx = this.sentenceQueue.map(Number).indexOf(Number(this.editForm.id));
+                if (idx >= 0) {
+                    this.sentenceQueue.splice(idx, 1);
+                    this.persistSentenceQueue();
+                }
+                if (this.sentenceEditMode && this.sentenceQueue.length) {
+                    this.openNextSentenceQueueCard();
+                } else {
+                    this.sentenceEditMode = false;
+                    this.currentScreen = 'sentenceQueue';
+                }
+            } else {
+                this.currentScreen = this.editReturnScreen;
+            }
         },
         async deleteCard() {
             if(!this.cardToEdit) return;
@@ -1031,6 +1144,7 @@ getAdjustedMaxNew(dateToCheck) {
             this.currentScreen = 'wordReview';
         },
         cancelEdit() {
+            if (this.editReturnScreen === 'sentenceQueue') this.sentenceEditMode = false;
             this.currentScreen = this.editReturnScreen;
         },
 
