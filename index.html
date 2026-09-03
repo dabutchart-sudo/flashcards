@@ -225,6 +225,13 @@
         .queue-sentence { font-size:1.4rem; color:#555; font-style:italic; margin-top:8px; line-height:1.4; }
         .queue-actions { display:flex; gap:8px; margin-top:10px; }
         .queue-actions button { flex:1; border:none; border-radius:10px; padding:10px; font-size:1.3rem; font-weight:700; cursor:pointer; }
+        .ai-paste-box { width:100%; min-height:160px; padding:14px; border:1px solid #ddd; border-radius:12px; font-size:1.4rem; font-family:inherit; resize:vertical; background:#fff; }
+        .ai-result-card { padding:14px 0; border-bottom:1px solid #eee; }
+        .ai-option { width:100%; text-align:left; border:1px solid #e3e6e8; background:#fff; border-radius:12px; padding:12px; margin-top:8px; cursor:pointer; }
+        .ai-option:hover { background:#f8f9fa; }
+        .ai-option-nl { font-size:1.5rem; font-weight:700; color:var(--text-main); line-height:1.35; }
+        .ai-option-en { font-size:1.3rem; color:var(--text-sub); margin-top:5px; line-height:1.35; }
+        .ai-import-status { font-size:1.3rem; margin-top:10px; line-height:1.4; }
         .tts-btn { position: absolute; bottom: 15px; left: 15px !important; right: auto !important; background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .hint-btn { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); background: none; border: none; font-size: 2.5rem; cursor: pointer; z-index: 10; }
         .edit-card-btn { position: absolute; bottom: 15px; right: 15px; background: #eee; border: none; border-radius: 10px; padding: 10px 20px; font-weight: 700; font-size: 1.3rem; cursor: pointer; z-index: 10; }
@@ -450,8 +457,31 @@
                 <div class="container-elevated">
                     <div style="font-size:1.4rem; color:var(--text-sub); margin-bottom:10px;">Cards marked for a better example sentence.</div>
                     <button class="btn-large" :disabled="!sentenceQueue.length" @click="copySentencePrompt">Copy AI Prompt</button>
+                    <button class="btn-large btn-outline" :disabled="!sentenceQueue.length" @click="showAiImport = !showAiImport">{{ showAiImport ? 'Hide AI Import' : 'Paste AI Results' }}</button>
                     <button class="btn-large btn-outline" v-if="sentenceQueue.length" @click="startSentenceQueueEdit">Edit First Card</button>
                 </div>
+
+                <div v-if="showAiImport" class="container-elevated">
+                    <div class="queue-word">Import ChatGPT results</div>
+                    <div class="queue-sub" style="margin:6px 0 10px;">Paste the complete JSON response from ChatGPT below. The importer checks card IDs and sentence pairs before showing any choices.</div>
+                    <textarea class="ai-paste-box" v-model="aiImportText" placeholder="Paste ChatGPT JSON here..."></textarea>
+                    <button class="btn-large" @click="parseAiResults">Load Suggestions</button>
+                    <div v-if="aiImportStatus" class="ai-import-status" :style="{ color: aiImportError ? 'var(--color-again)' : 'var(--text-sub)' }">{{ aiImportStatus }}</div>
+                </div>
+
+                <div v-if="aiResultCards.length" class="container-elevated">
+                    <div style="font-size:1.4rem; color:var(--text-sub); margin-bottom:10px;">Tap a sentence to save it to Supabase and remove that card from the queue.</div>
+                    <div v-for="item in aiResultCards" :key="item.card.id" class="ai-result-card">
+                        <div class="queue-word">{{ item.card.dutch }} <span v-if="item.card.partofword">({{ item.card.partofword }})</span></div>
+                        <div class="queue-sub">{{ item.card.english }}</div>
+                        <div v-if="item.card.dutch_sentence" class="queue-sentence">Current: {{ item.card.dutch_sentence }}</div>
+                        <button v-for="(option, index) in item.sentences" :key="index" class="ai-option" @click="useAiSentence(item.card, option)">
+                            <div class="ai-option-nl">{{ index + 1 }}. {{ option.nl }}</div>
+                            <div class="ai-option-en">{{ option.en }}</div>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="container-elevated">
                     <div v-if="!sentenceQueue.length" class="center-msg" style="margin:10px 0;">No sentences waiting.</div>
                     <div v-for="c in sentenceQueueCards" :key="c.id" class="queue-card">
@@ -631,6 +661,11 @@ const app = createApp({
             toastMessage: 'Copied!',
             sentenceQueue: [],
             sentenceEditMode: false,
+            showAiImport: false,
+            aiImportText: '',
+            aiResults: [],
+            aiImportStatus: '',
+            aiImportError: false,
             
             // Edit Card State
             editForm: { id: null, dutch: '', english: '', dutch_sentence: '', english_sentence: '', image_url: '' },
@@ -695,6 +730,13 @@ const app = createApp({
         },
         isCurrentCardFlagged() {
             return !!this.currentCard && this.sentenceQueue.map(Number).includes(Number(this.currentCard.id));
+        },
+        aiResultCards() {
+            const queueIds = new Set(this.sentenceQueue.map(Number));
+            return this.aiResults.map(r => {
+                const card = this.allCards.find(c => Number(c.id) === Number(r.id));
+                return card && queueIds.has(Number(card.id)) ? { card, sentences: r.sentences } : null;
+            }).filter(Boolean);
         },
         filteredWords() {
             const today = new Date().toLocaleDateString('en-CA');
@@ -869,14 +911,115 @@ getAdjustedMaxNew(dateToCheck) {
         },
         async copySentencePrompt() {
             if (!this.sentenceQueueCards.length) return;
-            const words = this.sentenceQueueCards.map(c => `${c.dutch} (${c.english})`).join('\n');
-            const prompt = `Please provide 5 examples of simple Dutch sentences for each of the following words:\n\n${words}\n\nEnsure each Dutch sentence has its English translation below. This is for a flashcard app, so ensure the sentence clearly refers to the word in question. Please ensure all 5 sentences for each word are about different subjects.\n\nI do not require flashcards. Just the sentences themselves.`;
+            const cards = this.sentenceQueueCards.map(c => ({
+                id: c.id,
+                dutch: c.dutch,
+                english: c.english
+            }));
+            const prompt = `Please provide 5 simple Dutch example sentences for each flashcard below.
+
+Requirements:
+- Each sentence must clearly demonstrate the meaning of the target Dutch word.
+- Keep the Dutch simple and natural for a beginner learner.
+- For each word, use a different subject in each of the 5 sentences.
+- Give an accurate English translation for every Dutch sentence.
+- Preserve each card's id exactly.
+
+IMPORTANT OUTPUT FORMAT:
+Return ONLY valid JSON. Do not use Markdown code fences, headings, comments, explanations, or any text before or after the JSON.
+Return a JSON array using exactly this structure:
+[
+  {
+    "id": 123,
+    "dutch": "example",
+    "sentences": [
+      {"nl": "Dutch sentence 1.", "en": "English translation 1."},
+      {"nl": "Dutch sentence 2.", "en": "English translation 2."},
+      {"nl": "Dutch sentence 3.", "en": "English translation 3."},
+      {"nl": "Dutch sentence 4.", "en": "English translation 4."},
+      {"nl": "Dutch sentence 5.", "en": "English translation 5."}
+    ]
+  }
+]
+
+FLASHCARDS:
+${JSON.stringify(cards, null, 2)}`;
             try {
                 await navigator.clipboard.writeText(prompt);
                 this.toastMessage = 'Prompt copied!';
                 this.showCopyToast = true;
                 setTimeout(() => { this.showCopyToast = false; }, 2000);
             } catch (e) { console.error(e); }
+        },
+        parseAiResults() {
+            this.aiImportError = false;
+            this.aiImportStatus = '';
+            this.aiResults = [];
+            let raw = (this.aiImportText || '').trim();
+            if (!raw) {
+                this.aiImportError = true;
+                this.aiImportStatus = 'Paste the ChatGPT response first.';
+                return;
+            }
+            raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+            const firstBracket = raw.indexOf('[');
+            const lastBracket = raw.lastIndexOf(']');
+            if (firstBracket > 0 && lastBracket > firstBracket) raw = raw.slice(firstBracket, lastBracket + 1);
+            try {
+                const parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) throw new Error('The response must be a JSON array.');
+                const queueIds = new Set(this.sentenceQueue.map(Number));
+                const valid = [];
+                const problems = [];
+                const seen = new Set();
+                for (const item of parsed) {
+                    const id = Number(item?.id);
+                    if (!Number.isFinite(id) || !queueIds.has(id) || seen.has(id)) continue;
+                    const card = this.allCards.find(c => Number(c.id) === id);
+                    if (!card) continue;
+                    const sentences = Array.isArray(item.sentences) ? item.sentences.filter(x =>
+                        x && typeof x.nl === 'string' && x.nl.trim() && typeof x.en === 'string' && x.en.trim()
+                    ).map(x => ({ nl: x.nl.trim(), en: x.en.trim() })).slice(0, 5) : [];
+                    if (!sentences.length) { problems.push(card.dutch); continue; }
+                    valid.push({ id, sentences });
+                    seen.add(id);
+                }
+                if (!valid.length) throw new Error('No valid queued card IDs with Dutch/English sentence pairs were found.');
+                this.aiResults = valid;
+                const missing = this.sentenceQueueCards.filter(c => !seen.has(Number(c.id))).map(c => c.dutch);
+                this.aiImportStatus = `Loaded suggestions for ${valid.length} of ${this.sentenceQueue.length} queued card${this.sentenceQueue.length === 1 ? '' : 's'}.` + (missing.length ? ` Missing or invalid: ${missing.join(', ')}.` : '');
+            } catch (e) {
+                this.aiImportError = true;
+                this.aiImportStatus = 'Could not import the response: ' + e.message;
+            }
+        },
+        async useAiSentence(card, option) {
+            if (!card || !option) return;
+            const oldDutch = card.dutch_sentence || '';
+            const oldEnglish = card.english_sentence || '';
+            card.dutch_sentence = option.nl;
+            card.english_sentence = option.en;
+            const { error } = await supabase.from('cards').update({
+                dutch_sentence: option.nl,
+                english_sentence: option.en
+            }).eq('id', card.id);
+            if (error) {
+                card.dutch_sentence = oldDutch;
+                card.english_sentence = oldEnglish;
+                alert('Error saving sentence: ' + error.message);
+                return;
+            }
+            const idx = this.sentenceQueue.map(Number).indexOf(Number(card.id));
+            if (idx >= 0) this.sentenceQueue.splice(idx, 1);
+            this.persistSentenceQueue();
+            this.aiResults = this.aiResults.filter(r => Number(r.id) !== Number(card.id));
+            this.toastMessage = 'Sentence saved!';
+            this.showCopyToast = true;
+            setTimeout(() => { this.showCopyToast = false; }, 1500);
+            if (!this.sentenceQueue.length) {
+                this.aiImportStatus = 'All sentence replacements are complete.';
+                this.aiImportText = '';
+            }
         },
         startSentenceQueueEdit() {
             const first = this.sentenceQueueCards[0];
