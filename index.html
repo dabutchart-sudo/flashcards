@@ -335,6 +335,11 @@
         .trouble-metric strong { display: block; font-size: 1.45rem; }
         .trouble-metric span { font-size: 1.05rem; color: var(--text-sub); }
         .report-empty { color: var(--text-sub); font-size: 1.3rem; padding: 14px 0 4px; text-align: center; }
+        .review-load-note { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #F7F9FB; color: var(--text-sub); font-size: 1.2rem; line-height: 1.35; text-align: center; }
+        .interval-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+        .interval-pill { background: #F7F9FB; border-radius: 12px; padding: 12px 6px; text-align: center; }
+        .interval-pill-value { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        .interval-pill-label { font-size: 1.05rem; color: var(--text-sub); margin-top: 3px; }
 
         .hidden { display: none !important; }
         .center-msg { text-align: center; color: black; margin-top: 20px; font-size: 2rem; }
@@ -370,6 +375,7 @@
                             <div class="pw-val">{{ stats.tomorrowNew }}</div> <div class="pw-div-vert"></div> <div class="pw-val">{{ stats.tomorrowReview }}</div>
                         </div>
                     </div>
+                    <div class="review-load-note">{{ newCardGovernorText }}</div>
                 </div>
 
                 <div class="menu-grid">
@@ -700,6 +706,17 @@ heffen (to lift)"></textarea>
                 </div>
 
                 <div class="container-elevated">
+                    <div class="chart-heading">Interval Distribution</div>
+                    <div class="chart-subheading">How far into the future your active review cards are currently scheduled</div>
+                    <div class="interval-grid">
+                        <div v-for="bucket in reportIntervalDistribution" :key="bucket.label" class="interval-pill">
+                            <div class="interval-pill-value">{{ bucket.count }}</div>
+                            <div class="interval-pill-label">{{ bucket.label }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="container-elevated">
                     <div class="chart-heading">Current Status</div>
                     <div id="status-chart-div" class="chart-wrapper"></div>
                 </div>
@@ -721,6 +738,24 @@ heffen (to lift)"></textarea>
                         <option value="15">15 cards</option>
                         <option value="20">20 cards</option>
                         <option value="30">30 cards</option>
+                    </select>
+                    <div style="font-size:1.3rem; color:#788591; margin-top:10px;">
+                        This is always the maximum. The review-load governor may reduce today's new cards, but will never increase this value.
+                    </div>
+                </div>
+
+                <div class="container-elevated">
+                    <div class="header-title" style="font-size:1.8rem; margin-bottom:10px; position:relative; transform:none; left:auto;">Daily Review Target</div>
+                    <div style="font-size:1.3rem; color:#788591; margin-bottom:10px;">
+                        New cards are automatically reduced as due reviews approach this target. Reviews themselves are never blocked or capped.
+                    </div>
+                    <select v-model="settingsReviewTarget" style="width:100%; font-size:1.8rem; padding:15px; border-radius:12px;">
+                        <option value="0">Disabled</option>
+                        <option value="40">40 reviews</option>
+                        <option value="50">50 reviews</option>
+                        <option value="60">60 reviews</option>
+                        <option value="75">75 reviews</option>
+                        <option value="100">100 reviews</option>
                     </select>
                 </div>
 
@@ -750,6 +785,7 @@ import { APP_VERSION, SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONF
 
 // Constant for Retention Setting
 const CONFIG_RET_THRESHOLD = 'dutch_flashcards_ret_threshold';
+const CONFIG_REVIEW_TARGET = 'dutch_flashcards_review_target';
 
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -803,8 +839,9 @@ const app = createApp({
             wordSearch: '',
             wordFilter: 'all',
             sortCol: 'dutch',
-            settingsMaxNew: '10',
+            settingsMaxNew: '5',
             settingsRetentionThreshold: '0', // Default to 0 (Disabled)
+            settingsReviewTarget: '60',
             reportRange: '30',
             reportRanges: [
                 { value: '7', label: '7 days' },
@@ -829,19 +866,22 @@ const app = createApp({
             yesterdayD.setDate(yesterdayD.getDate() - 1);
             const yesterday = yesterdayD.toLocaleDateString('en-CA');
             
-            // Limit for Today (based on YESTERDAY'S performance)
-            const maxNewToday = this.getAdjustedMaxNew(yesterday);
+            const dueReviewToday = this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) <= today).length;
+            const dueReviewTomorrow = this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) === tomorrow).length;
 
-            // Limit for Tomorrow (based on TODAY'S performance)
-            const maxNewTomorrow = this.getAdjustedMaxNew(today);
+            // The configured Daily New Cards value is a hard ceiling.
+            // Retention and review load may only reduce it.
+            const maxNewToday = this.getAdjustedMaxNew(yesterday, dueReviewToday);
+            const maxNewTomorrow = this.getAdjustedMaxNew(today, dueReviewTomorrow);
 
             const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
             
             return {
                 dueNew: Math.max(0, maxNewToday - newDone),
-                dueReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) <= today).length,
+                dueReview: dueReviewToday,
                 tomorrowNew: maxNewTomorrow,
-                tomorrowReview: this.allCards.filter(c => !c.suspended && c.type !== "new" && c.due_date && c.due_date.slice(0, 10) === tomorrow).length
+                tomorrowReview: dueReviewTomorrow,
+                maxNewToday
             };
         },
         reportRangeStart() {
@@ -928,6 +968,36 @@ const app = createApp({
                 return { card, again:s.again, total:s.total, retention:Math.round(((s.total - s.again) / s.total) * 100) };
             }).filter(Boolean).sort((a,b) => b.again - a.again || a.retention - b.retention || b.total - a.total).slice(0,5);
         },
+        reportIntervalDistribution() {
+            const buckets = [
+                { label: '≤3 days', min: 0, max: 3, count: 0 },
+                { label: '4–7 days', min: 4, max: 7, count: 0 },
+                { label: '8–30 days', min: 8, max: 30, count: 0 },
+                { label: '31–90 days', min: 31, max: 90, count: 0 },
+                { label: '90+ days', min: 91, max: Infinity, count: 0 }
+            ];
+            this.allCards.forEach(c => {
+                if (c.suspended || c.type === 'new') return;
+                const ivl = Number(c.interval || 0);
+                const bucket = buckets.find(b => ivl >= b.min && ivl <= b.max);
+                if (bucket) bucket.count++;
+            });
+            return buckets;
+        },
+        newCardGovernorText() {
+            const configured = parseInt(this.settingsMaxNew || 5);
+            const target = parseInt(this.settingsReviewTarget || 0);
+            const allowed = this.stats.maxNewToday ?? configured;
+            const due = this.stats.dueReview || 0;
+            if (allowed < configured) {
+                if (allowed === 0) {
+                    return `New cards paused today: ${due} reviews are due. Your configured maximum remains ${configured}.`;
+                }
+                return `New cards reduced to ${allowed} today because ${due} reviews are due. Your configured maximum remains ${configured}.`;
+            }
+            if (target > 0) return `New-card maximum: ${configured}. Review target: ${target}; current review load does not require a reduction.`;
+            return `New-card maximum: ${configured}. Review-load governor is disabled.`;
+        },
         currentCard() { return this.sessionQueue[this.currentIndex] || null; },
         progressPercent() { return this.sessionTotal ? ((this.sessionTotal - this.sessionQueue.length) / this.sessionTotal) * 100 : 0; },
         progressText() { 
@@ -970,8 +1040,9 @@ const app = createApp({
     async mounted() {
         try {
             this.loading.msg = "Connecting...";
-            this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "10";
+            this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "5";
             this.settingsRetentionThreshold = localStorage.getItem(CONFIG_RET_THRESHOLD) || "0";
+            this.settingsReviewTarget = localStorage.getItem(CONFIG_REVIEW_TARGET) || "60";
             try { this.sentenceQueue = JSON.parse(localStorage.getItem('dutch_flashcards_sentence_queue') || '[]'); } catch(e) { this.sentenceQueue = []; }
             
             this.loading.msg = "Loading Cards...";
@@ -1023,31 +1094,42 @@ const app = createApp({
             }
             localStorage.setItem(CONFIG_MAX_NEW, this.settingsMaxNew);
             localStorage.setItem(CONFIG_RET_THRESHOLD, this.settingsRetentionThreshold);
+            localStorage.setItem(CONFIG_REVIEW_TARGET, this.settingsReviewTarget);
             this.loading.show = false;
         },
-        // --- HELPER FOR RETENTION LOGIC ---
-        // Accept a 'dateToCheck' argument (YYYY-MM-DD string)
-getAdjustedMaxNew(dateToCheck) {
-    const rawLimit = parseInt(this.settingsMaxNew || 10);
-    const threshold = parseInt(this.settingsRetentionThreshold || 0);
+        // --- NEW-CARD GOVERNOR ---
+        // Daily New Cards is always the hard ceiling. Retention and review load may only reduce it.
+        getReviewLoadAllowance(dueReviews) {
+            const rawLimit = parseInt(this.settingsMaxNew || 5);
+            const target = parseInt(this.settingsReviewTarget || 0);
+            if (!target || target <= 0) return rawLimit;
 
-    if (threshold === 0) return rawLimit;
+            const ratio = Math.max(0, Number(dueReviews || 0)) / target;
+            if (ratio >= 1) return 0;
+            if (ratio >= 0.90) return Math.min(rawLimit, Math.max(1, Math.floor(rawLimit * 0.20)));
+            if (ratio >= 0.70) return Math.min(rawLimit, Math.max(1, Math.ceil(rawLimit * 0.50)));
+            return rawLimit;
+        },
+        getAdjustedMaxNew(dateToCheck, dueReviews = 0) {
+            const rawLimit = parseInt(this.settingsMaxNew || 5);
+            const threshold = parseInt(this.settingsRetentionThreshold || 0);
 
-    // FIX: Extract the YYYY-MM-DD directly from the UTC timestamp string
-    const dayReviews = this.reviewHistory.filter(r => {
-        if (!r.timestamp) return false;
-        return r.timestamp.slice(0, 10) === dateToCheck;
-    });
+            // Retention rule may pause new cards completely.
+            if (threshold > 0) {
+                const dayReviews = this.reviewHistory.filter(r => {
+                    if (!r.timestamp) return false;
+                    return r.timestamp.slice(0, 10) === dateToCheck;
+                });
 
-    if (dayReviews.length === 0) return rawLimit;
+                if (dayReviews.length > 0) {
+                    const passed = dayReviews.filter(r => r.rating !== 'again').length;
+                    const rate = (passed / dayReviews.length) * 100;
+                    if (rate < threshold) return 0;
+                }
+            }
 
-    const passed = dayReviews.filter(r => r.rating !== 'again').length;
-    const rate = (passed / dayReviews.length) * 100;
-
-    if (rate < threshold) return 0;
-
-    return rawLimit;
-},
+            return Math.min(rawLimit, this.getReviewLoadAllowance(dueReviews));
+        },
         startSession() {
             const todayD = new Date();
             const today = todayD.toLocaleDateString('en-CA');
@@ -1055,13 +1137,15 @@ getAdjustedMaxNew(dateToCheck) {
             yesterdayD.setDate(yesterdayD.getDate() - 1);
             const yesterday = yesterdayD.toLocaleDateString('en-CA');
             
-            // Use adjusted max (checks YESTERDAY for today's session)
-            const max = this.getAdjustedMaxNew(yesterday);
+            // 1. Get Due Review Cards (Shuffle them randomly)
+            let due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
+
+            // Use adjusted max (checks yesterday's retention and today's actual review load).
+            // This can never exceed the Daily New Cards setting.
+            const max = this.getAdjustedMaxNew(yesterday, due.length);
             
             const done = this.allCards.filter(c => c.first_seen && c.first_seen.slice(0,10)===today).length;
             
-            // 1. Get Due Review Cards (Shuffle them randomly)
-            let due = this.allCards.filter(c => !c.suspended && c.type!=="new" && c.due_date && c.due_date.slice(0,10)<=today);
             due.sort(() => Math.random() - 0.5);
 
             // 2. Get New Cards (Sort them by ID order)
