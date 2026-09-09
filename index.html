@@ -509,7 +509,12 @@
             <div class="content-scroll">
                 <div class="container-elevated">
                     <div style="font-size:1.4rem; color:var(--text-sub); margin-bottom:10px;">Cards marked for a better example sentence.</div>
-                    <button class="btn-large" :disabled="!sentenceQueue.length" @click="copySentencePrompt">Copy AI Prompt</button>
+                    <button v-if="!generationUser" class="btn-large" @click="signInForSentences">Continue with Google</button>
+                    <div v-else class="queue-sub">Signed in as {{ generationUser.email }} <button class="btn-text" @click="signOutOfGeneration" :disabled="generationBusy">Sign out</button></div>
+                    <button class="btn-large" :disabled="!generationUser || !sentenceQueue.length || generationBusy || sentenceSaving" @click="generateSentences()">{{ generationBusy ? 'Generating…' : 'Generate suggestions (up to 5 words)' }}</button>
+                    <div class="queue-sub">Sign-in is only needed to generate sentences. Suggestions are saved on this browser.</div>
+                    <div v-if="generationMessage" class="ai-import-status" role="status">{{ generationMessage }}</div>
+                    <button class="btn-large btn-outline" :disabled="!sentenceQueue.length" @click="copySentencePrompt">Copy AI Prompt (manual option)</button>
                     <button class="btn-large btn-outline" :disabled="!sentenceQueue.length" @click="showAiImport = !showAiImport">{{ showAiImport ? 'Hide AI Import' : 'Paste AI Results' }}</button>
                     <button class="btn-large btn-outline" v-if="sentenceQueue.length" @click="startSentenceQueueEdit">Edit First Card</button>
                 </div>
@@ -533,15 +538,19 @@ heffen (to lift)"></textarea>
                 </div>
 
                 <div v-if="aiResultCards.length" class="container-elevated">
-                    <div style="font-size:1.4rem; color:var(--text-sub); margin-bottom:10px;">Tap a sentence to save it to Supabase and remove that card from the queue.</div>
-                    <div v-for="item in aiResultCards" :key="item.card.id" class="ai-result-card">
+                    <div style="font-size:1.4rem; color:var(--text-sub); margin-bottom:10px;">Tap a sentence to save it and move to the next word. {{ aiResultCards.length }} words have suggestions.</div>
+                    <div v-for="item in focusedSuggestions" :key="item.card.id" class="ai-result-card">
                         <div class="queue-word">{{ item.card.dutch }} <span v-if="item.card.partofword">({{ item.card.partofword }})</span></div>
                         <div class="queue-sub">{{ item.card.english }}</div>
                         <div v-if="item.card.dutch_sentence" class="queue-sentence">Current: {{ item.card.dutch_sentence }}</div>
-                        <button v-for="(option, index) in item.sentences" :key="index" class="ai-option" @click="useAiSentence(item.card, option)">
+                        <button v-for="(option, index) in item.sentences" :key="index" class="ai-option" @click="useAiSentence(item.card, option)" :disabled="sentenceSaving || generationBusy">
                             <div class="ai-option-nl">{{ index + 1 }}. {{ option.nl }}</div>
                             <div class="ai-option-en">{{ option.en }}</div>
                         </button>
+                        <div class="queue-actions">
+                            <button :disabled="generationBusy || sentenceSaving" @click="suggestionIndex++">Skip for now</button>
+                            <button :disabled="!generationUser || generationBusy || sentenceSaving" @click="generateSentences(item.card.id)">Try again</button>
+                        </div>
                     </div>
                 </div>
 
@@ -785,7 +794,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW } 
 
 // Release number: increment the final component for every delivered app update.
 // Kept in this HTML so the displayed release identifies the actual loaded file.
-const APP_VERSION = '2026.09.09.1';
+const APP_VERSION = '2026.09.09.2';
 
 // Constant for Retention Setting
 const CONFIG_RET_THRESHOLD = 'dutch_flashcards_ret_threshold';
@@ -798,7 +807,10 @@ function localStudyDay(date = new Date()) {
 }
 
 const { createApp } = Vue;
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Keep the existing anonymous study/database behavior independent of generation sign-in.
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:false, autoRefreshToken:false, detectSessionInUrl:false}});
+const generationClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{storageKey:'dutch_sentence_auth', flowType:'pkce'}});
+const SUGGESTIONS_KEY = 'dutch_sentence_suggestions_v1:' + SUPABASE_URL;
 
 const app = createApp({
     data() {
@@ -830,6 +842,12 @@ const app = createApp({
             showAiImport: false,
             aiImportText: '',
             aiResults: [],
+            generationUser: null,
+            authSubscription: null,
+            generationBusy: false,
+            sentenceSaving: false,
+            generationMessage: '',
+            suggestionIndex: 0,
             aiImportStatus: '',
             aiImportError: false,
             sentenceWordInput: '',
@@ -865,7 +883,16 @@ const app = createApp({
             ]
         };
     },
+    watch: {
+        aiResults: {deep:true, handler(value) {
+            try { localStorage.setItem(SUGGESTIONS_KEY, JSON.stringify(value)); }
+            catch { this.generationMessage = 'Suggestions could not be saved on this browser. Keep this page open until you finish.'; }
+        }}
+    },
     computed: {
+        focusedSuggestions() {
+            return this.aiResultCards.length ? [this.aiResultCards[this.suggestionIndex % this.aiResultCards.length]] : [];
+        },
         studyDayComplete() { return this.completedStudyDays[this.studyDay] === true; },
         stats() {
             if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
@@ -1054,6 +1081,21 @@ const app = createApp({
         }
     },
     async mounted() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(SUGGESTIONS_KEY) || '[]');
+            if (Array.isArray(saved)) this.aiResults = saved.filter(r => r && Number.isFinite(Number(r.id)) && Array.isArray(r.sentences) && r.sentences.every(s => s && typeof s.nl === 'string' && typeof s.en === 'string'));
+        } catch {}
+        this.authSubscription = generationClient.auth.onAuthStateChange((_event, session) => {
+            this.generationUser = session?.user || null;
+        }).data.subscription;
+        generationClient.auth.getSession().then(({data, error}) => {
+            if (error) this.generationMessage = 'Google sign-in could not be restored. Please sign in again.';
+            else this.generationUser = data.session?.user || null;
+        });
+        if (sessionStorage.getItem('sentence_signin_return')) {
+            sessionStorage.removeItem('sentence_signin_return');
+            this.currentScreen = 'sentenceQueue';
+        }
         this.refreshStudyDay();
         this.dayCheckTimer = setInterval(this.refreshStudyDay, 1000);
         window.addEventListener('focus', this.refreshStudyDay);
@@ -1090,12 +1132,52 @@ const app = createApp({
         }
     },
     beforeUnmount() {
+        this.authSubscription?.unsubscribe();
         clearInterval(this.dayCheckTimer);
         window.removeEventListener('focus', this.refreshStudyDay);
         window.removeEventListener('storage', this.refreshStudyDay);
         document.removeEventListener('visibilitychange', this.refreshStudyDay);
     },
     methods: {
+        async signInForSentences() {
+            this.generationMessage = '';
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                this.generationMessage = 'Open the hosted app in Chrome or Safari to sign in.'; return;
+            }
+            try {
+                await this.saveProgress();
+                sessionStorage.setItem('sentence_signin_return', '1');
+                const {error} = await generationClient.auth.signInWithOAuth({provider:'google', options:{redirectTo:location.origin + location.pathname}});
+                if (error) throw error;
+            } catch { this.generationMessage = 'Could not start Google sign-in. Check the Google provider setup in Supabase.'; }
+        },
+        async signOutOfGeneration() {
+            const {error} = await generationClient.auth.signOut({scope:'local'});
+            if (error) this.generationMessage = 'Could not sign out. Please try again.';
+        },
+        async generateSentences(retryId = null) {
+            if (this.generationBusy || this.sentenceSaving) return;
+            if (!this.generationUser) { this.generationMessage = 'Sign in with Google first.'; return; }
+            const existing = new Set(this.aiResults.map(r => Number(r.id)));
+            const ids = retryId === null ? this.sentenceQueueCards.filter(c => !existing.has(Number(c.id))).slice(0,5).map(c => Number(c.id)) : [Number(retryId)];
+            if (!ids.length) { this.generationMessage = 'All queued words already have suggestions.'; return; }
+            this.generationBusy = true;
+            this.generationMessage = 'Generating suggestions…';
+            try {
+                const {data, error} = await generationClient.functions.invoke('generate-sentences', {body:{ids}});
+                if (error) {
+                    let message = 'Generation failed. Check sign-in and the server setup.';
+                    try { message = (await error.context.json()).error || message; } catch {}
+                    throw new Error(message);
+                }
+                if (!data || !Array.isArray(data.cards) || data.cards.length !== ids.length || new Set(data.cards.map(r => r.id)).size !== ids.length || data.cards.some(r => !ids.includes(r.id) || !Array.isArray(r.sentences) || r.sentences.length !== 5 || r.sentences.some(p => typeof p.nl !== 'string' || typeof p.en !== 'string'))) throw new Error('Invalid suggestions received. Please try again.');
+                const received = new Set(data.cards.map(r => r.id));
+                this.aiResults = [...this.aiResults.filter(r => !received.has(Number(r.id))), ...data.cards];
+                this.suggestionIndex = 0;
+                this.generationMessage = 'Suggestions ready. Choose a sentence below.';
+            } catch (error) { this.generationMessage = error.message; }
+            finally { this.generationBusy = false; }
+        },
         refreshStudyDay() {
             this.studyDay = localStudyDay();
             try {
@@ -1435,11 +1517,11 @@ ${JSON.stringify(cards, null, 2)}`;
             }
         },
         async useAiSentence(card, option) {
-            if (!card || !option) return;
+            if (!card || !option || this.sentenceSaving) return;
+            this.sentenceSaving = true;
+            try {
             const oldDutch = card.dutch_sentence || '';
             const oldEnglish = card.english_sentence || '';
-            card.dutch_sentence = option.nl;
-            card.english_sentence = option.en;
             const { error } = await supabase.from('cards').update({
                 dutch_sentence: option.nl,
                 english_sentence: option.en
@@ -1450,6 +1532,8 @@ ${JSON.stringify(cards, null, 2)}`;
                 alert('Error saving sentence: ' + error.message);
                 return;
             }
+            card.dutch_sentence = option.nl;
+            card.english_sentence = option.en;
             const idx = this.sentenceQueue.map(Number).indexOf(Number(card.id));
             if (idx >= 0) this.sentenceQueue.splice(idx, 1);
             this.persistSentenceQueue();
@@ -1461,6 +1545,8 @@ ${JSON.stringify(cards, null, 2)}`;
                 this.aiImportStatus = 'All sentence replacements are complete.';
                 this.aiImportText = '';
             }
+            } catch { this.generationMessage = 'The sentence could not be saved. Please try again.'; }
+            finally { this.sentenceSaving = false; }
         },
         startSentenceQueueEdit() {
             const first = this.sentenceQueueCards[0];
