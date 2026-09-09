@@ -443,7 +443,7 @@
                 
                 <div v-if="!currentCard && sessionStarted" class="center-msg">
                     <h2>🎉 All caught up!</h2>
-                    <p>No more cards due right now.</p>
+                    <p>{{ studyDayComplete ? "Today’s study session is complete. No more new cards until tomorrow." : "No more cards due right now." }}</p>
                 </div>
             </div>
 
@@ -787,6 +787,12 @@ import { APP_VERSION, SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONF
 const CONFIG_RET_THRESHOLD = 'dutch_flashcards_ret_threshold';
 const CONFIG_REVIEW_TARGET = 'dutch_flashcards_review_target';
 
+// Completion is scoped to this database, browser origin and local calendar day.
+const STUDY_DAY_KEY = 'dutch_flashcards_completed_v1:' + SUPABASE_URL + ':';
+function localStudyDay(date = new Date()) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 const { createApp } = Vue;
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -808,6 +814,10 @@ const app = createApp({
             isFlipped: false,
             disableTransition: false,
             sessionStarted: false,
+            sessionDay: null,
+            studyDay: localStudyDay(),
+            completedStudyDays: {},
+            dayCheckTimer: null,
             showHint: false, 
             showCopyToast: false,
             toastMessage: 'Copied!',
@@ -852,10 +862,11 @@ const app = createApp({
         };
     },
     computed: {
+        studyDayComplete() { return this.completedStudyDays[this.studyDay] === true; },
         stats() {
             if (!this.allCards.length) return { dueNew:0, dueReview:0, tomorrowNew:0, tomorrowReview:0 };
             
-            const todayD = new Date();
+            const todayD = new Date(this.studyDay + 'T12:00:00');
             const today = todayD.toLocaleDateString('en-CA');
             
             const tomorrowD = new Date(todayD);
@@ -877,7 +888,7 @@ const app = createApp({
             const newDone = this.allCards.filter(c => !c.suspended && c.first_seen && c.first_seen.slice(0, 10) === today).length;
             
             return {
-                dueNew: Math.max(0, maxNewToday - newDone),
+                dueNew: this.studyDayComplete ? 0 : Math.max(0, maxNewToday - newDone),
                 dueReview: dueReviewToday,
                 tomorrowNew: maxNewTomorrow,
                 tomorrowReview: dueReviewTomorrow,
@@ -985,6 +996,7 @@ const app = createApp({
             return buckets;
         },
         newCardGovernorText() {
+            if (this.studyDayComplete) return 'Study session complete for today. New cards will be available tomorrow, subject to your Settings and review load.';
             const configured = parseInt(this.settingsMaxNew || 5);
             const target = parseInt(this.settingsReviewTarget || 0);
             const allowed = this.stats.maxNewToday ?? configured;
@@ -1038,6 +1050,11 @@ const app = createApp({
         }
     },
     async mounted() {
+        this.refreshStudyDay();
+        this.dayCheckTimer = setInterval(this.refreshStudyDay, 1000);
+        window.addEventListener('focus', this.refreshStudyDay);
+        window.addEventListener('storage', this.refreshStudyDay);
+        document.addEventListener('visibilitychange', this.refreshStudyDay);
         try {
             this.loading.msg = "Connecting...";
             this.settingsMaxNew = localStorage.getItem(CONFIG_MAX_NEW) || "5";
@@ -1068,8 +1085,39 @@ const app = createApp({
             this.loading.msg = "Failed: " + e.message;
         }
     },
+    beforeUnmount() {
+        clearInterval(this.dayCheckTimer);
+        window.removeEventListener('focus', this.refreshStudyDay);
+        window.removeEventListener('storage', this.refreshStudyDay);
+        document.removeEventListener('visibilitychange', this.refreshStudyDay);
+    },
     methods: {
+        refreshStudyDay() {
+            this.studyDay = localStudyDay();
+            try {
+                if (localStorage.getItem(STUDY_DAY_KEY + this.studyDay) === 'complete') {
+                    this.completedStudyDays[this.studyDay] = true;
+                }
+            } catch (error) {
+                // Keep the in-memory lock if browser storage is unavailable.
+            }
+        },
+        completeStudySession() {
+            // Empty launches and abandoned sessions do not complete a day.
+            if (!this.sessionStarted || !this.sessionDay || this.sessionTotal <= 0 || this.sessionQueue.length) return;
+            const day = this.sessionDay;
+            this.completedStudyDays[day] = true;
+            try {
+                localStorage.setItem(STUDY_DAY_KEY + day, 'complete');
+            } catch (error) {
+                this.toastMessage = 'Session complete. Browser storage is unavailable; the daily lock cannot survive a reload.';
+                this.showCopyToast = true;
+            }
+            // A session crossing midnight completes its starting day only.
+            this.refreshStudyDay();
+        },
         async nav(id) {
+            this.refreshStudyDay();
             if(id === 'menu') await this.saveProgress();
             this.currentScreen = id;
             if(id === 'learn') this.startSession();
@@ -1131,6 +1179,10 @@ const app = createApp({
             return Math.min(rawLimit, this.getReviewLoadAllowance(dueReviews));
         },
         startSession() {
+            this.refreshStudyDay();
+            // Returning from the menu resumes the allocated queue, including Again cards.
+            if (this.sessionStarted && this.sessionQueue.length) return;
+            this.sessionDay = this.studyDay;
             const todayD = new Date();
             const today = todayD.toLocaleDateString('en-CA');
             const yesterdayD = new Date(todayD);
@@ -1152,7 +1204,7 @@ const app = createApp({
             let n = this.allCards.filter(c => !c.suspended && c.type==="new");
             n.sort((a, b) => a.id - b.id); 
             
-            const limit = Math.max(0, max - done);
+            const limit = this.studyDayComplete ? 0 : Math.max(0, max - done);
             const newCardsForSession = n.slice(0, limit);
             
             // 3. Combine and shuffle entire queue so New/Review are mixed
@@ -1496,6 +1548,7 @@ ${JSON.stringify(cards, null, 2)}`;
                                 
                                 // FIX: Remove zombie card from the active queue so it doesn't show up again
                                 this.sessionQueue = this.sessionQueue.filter(card => card.id !== c.id);
+                                this.completeStudySession();
                                 
                                 supabase.from("cards")
                                     .update({ suspended: true })
@@ -1565,8 +1618,9 @@ ${JSON.stringify(cards, null, 2)}`;
 
             // remove current card
             this.sessionQueue.splice(this.currentIndex, 1);
+            this.completeStudySession();
 
-            if (this.reviewBuffer.length >= 5) {
+            if (this.sessionQueue.length === 0 || this.reviewBuffer.length >= 5) {
                 this.saveProgress();
             }
 
@@ -1662,6 +1716,7 @@ ${JSON.stringify(cards, null, 2)}`;
             
             // If we were in a session, remove it from session queue if it exists there
             this.sessionQueue = this.sessionQueue.filter(c => c.id !== this.cardToEdit.id);
+            this.completeStudySession();
             if(this.sessionQueue.length === 0) {
                  this.sessionTotal = 0; 
                  this.sessionStarted = false;
@@ -1854,3 +1909,4 @@ app.mount('#app');
 </script>
 </body>
 </html>
+
