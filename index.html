@@ -385,7 +385,7 @@
                     <button class="menu-btn" @click="nav('settings')"><span class="menu-icon">⚙️</span><span class="menu-text">Settings</span></button>
                     <button class="menu-btn" @click="nav('sentenceQueue')"><span class="menu-icon">🚩</span><span class="menu-text">Sentences <span v-if="sentenceQueue.length" class="queue-count">{{ sentenceQueue.length }}</span></span></button>
                 </div>
-                <div class="center-msg" style="font-size:1.2rem; margin-top:20px; color:#ccc;">Version {{ appVersion }}</div>
+                <div class="center-msg" style="font-size:1.2rem; margin-top:20px; color:var(--text-sub);">Version {{ appVersion }}</div>
             </div>
         </div>
 
@@ -781,7 +781,11 @@ heffen (to lift)"></textarea>
 
 <script type="module">
 // --- IMPORTS ---
-import { APP_VERSION, SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW } from './constants.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, UNSPLASH_ACCESS_KEY, CONFIG_MAX_NEW } from './constants.js';
+
+// Release number: increment the final component for every delivered app update.
+// Kept in this HTML so the displayed release identifies the actual loaded file.
+const APP_VERSION = '2026.09.09.1';
 
 // Constant for Retention Setting
 const CONFIG_RET_THRESHOLD = 'dutch_flashcards_ret_threshold';
